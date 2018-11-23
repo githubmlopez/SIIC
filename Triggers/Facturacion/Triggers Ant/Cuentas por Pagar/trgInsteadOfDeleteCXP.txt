@@ -1,0 +1,111 @@
+SET QUOTED_IDENTIFIER ON
+GO
+-- Create trigger on table CI_CUENTAS_X_PAGAR for Insert statement
+CREATE TRIGGER [dbo].[trgInsteadOfDeleteCxC] ON [dbo].[CI_CUENTA_X_PAGAR]
+INSTEAD OF DELETE
+AS
+declare
+   @dcve_empresa     varchar(4),
+   @did_cxp          int,
+   @dcve_operacion   varchar(4),
+   @did_proveedor    int,
+   @dcve_chequera    varchar(6),
+   @df_captura       date,
+   @df_pago          date,
+   @dimp_bruto       numeric(12,2),
+   @dimp_iva         numeric(12,2),
+   @dimp_neto        numeric(12,2),
+   @dcve_moneda      varchar(1),
+   @dtipo_cambio     numeric(8,2),
+   @dnum_docto_ref   varchar(40),
+   @dtx_nota         varchar(200),
+   @druta_docto_pdf  varchar(250),
+   @dsit_c_x_p       varchar(2);
+
+
+declare
+
+    @b_reg_correcto  bit,
+    @pje_iva         numeric(7,4),
+    @tx_error        varchar(300),
+    @tx_error_part   varchar(300),
+    @fol_audit       int,
+    @tot_item        numeric(12,2);
+
+declare 
+
+    @k_verdadero     bit,
+    @k_falso         bit,
+    @k_activa        varchar(1), 
+    @k_cancelada     varchar(1),
+    @k_peso          varchar(1),
+    @k_dolar         varchar(1),
+    @k_fol_audit     varchar(4);
+   
+select   
+    
+    @k_verdadero     = 1,
+    @k_falso         = 0,
+    @k_cancelada     = 'C',
+    @k_activa        = 'A', 
+    @k_cancelada     = 'C',
+    @k_peso          = 'P',
+    @k_dolar         = 'D',
+    @k_fol_audit     = 'AUDI';
+       
+select   @dcve_empresa      = d.CVE_EMPRESA from inserted d;
+select   @did_cxp           = d.ID_CXP from inserted d;
+select   @did_proveedor     = d.ID_PROVEEDOR from inserted d;
+select   @dcve_chequera     = d.CVE_CHEQUERA from inserted d;
+select   @df_captura        = d.F_CAPTURA from inserted d;
+select   @df_pago           = d.F_PAGO from inserted d;
+select   @dimp_bruto        = d.IMP_BRUTO from inserted d;
+select   @dimp_iva          = d.IMP_IVA from inserted d;
+select   @dimp_neto         = d.IMP_NETO from inserted d;
+select   @dcve_moneda       = d.CVE_MONEDA from inserted d;
+select   @dtipo_cambio      = d.TIPO_CAMBIO from inserted d;
+select   @dnum_docto_ref    = d.NUM_DOCTO_REF from inserted d;
+select   @dtx_nota          = d.TX_NOTA from inserted d;
+select   @druta_docto_pdf   = d.RUTA_DOCTO_PDF from inserted d;
+select   @dtx_nota          = d.TX_NOTA from inserted d;
+select   @dsit_c_x_p        = d.SIT_C_X_P from inserted d;
+
+BEGIN 
+  SET NOCOUNT ON;
+
+  set @tx_error_part = ' '
+
+  set @tx_error = 'Error Delete CI_CUENTA_X_P : ' + @dcve_empresa + '  ' + CAST(@did_cxp AS varchar(10)) + @tx_error_part
+ 
+  IF EXISTS (SELECT * FROM  CI_CUENTA_X_PAGAR WHERE CVE_EMPRESA  =  @dcve_empresa AND
+                                                    ID_CXP       =  @did_cxp)
+  BEGIN  
+    set @tx_error = @tx_error_part  +  'No existe reg baja'  
+
+    set @fol_audit  =  (select NUM_FOLIO FROM CI_FOLIO WHERE CVE_FOLIO = @k_fol_audit)
+
+    UPDATE CI_FOLIO
+           SET NUM_FOLIO = @fol_audit + 1
+    WHERE  CVE_FOLIO     = @k_fol_audit
+
+    insert into  CI_AUDIT_ERROR (
+                 ID_FOLIO,
+                 F_OPERACION,
+                 TX_ERROR)      
+           values
+                (@fol_audit,
+                 GETDATE(),
+                 @tx_error)
+    COMMIT
+    RAISERROR('El UPDATE TIENE INCONSISTENCIA DE INFORMACION',11,1)
+
+  END
+  ELSE
+  BEGIN
+    DELETE FROM CI_CONCILIA_CXP     WHERE CVE_EMPRESA  =  @dcve_empresa AND
+                                          ID_CXP       =  @did_cxp 
+
+    DELETE FROM CI_CUENTA_X_PAGAR   WHERE CVE_EMPRESA  =  @dcve_empresa AND
+                                          ID_CXP       =  @did_cxp 
+  END
+END

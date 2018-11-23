@@ -1,0 +1,23 @@
+USE [ADMON01]
+GO
+
+SET ANSI_NULLS ON
+
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+SET NOCOUNT ON
+GO
+--exec spConCuCoCxc 'CU', '201804'
+CREATE PROCEDURE [dbo].[spConCuCoPagAnt]   @pCveEmpresa varchar(4), @pAnoMes  varchar(6)
+AS
+BEGIN
+  SELECT CVE_CHEQUERA AS 'Cve. Moneda',
+  ID_MOVTO_BANCARIO AS 'Id. Movto.Ban',
+  F_OPERACION AS 'F Operacion',
+  DESCRIPCION AS 'Descripción',
+  IMP_TRANSACCION AS 'Imp. Oper.', 
+  CVE_MONEDA AS' Moneda',
+  TX_NOTA as 'NOTA'
+  FROM CI_CUCO_MB_NO_CONC WHERE ANO_MES = @pAnoMes 
+END

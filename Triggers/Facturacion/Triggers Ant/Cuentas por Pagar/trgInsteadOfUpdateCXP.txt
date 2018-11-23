@@ -1,0 +1,230 @@
+-- Create trigger on table CI_CUENTA_X_PAGAR for Insert statement
+CREATE TRIGGER [dbo].[trgInsteadOfUpdateCXP] ON [dbo].[CI_CUENTA_X_PAGAR]
+INSTEAD OF Update
+AS
+declare
+   @cve_empresa      varchar(4),
+   @id_cxp           int,
+   @cve_operacion    varchar(4),
+   @id_proveedor     int,
+   @cve_chequera     varchar(6),
+   @f_captura        date,
+   @f_pago           date,
+   @imp_bruto        numeric(12,2),
+   @imp_iva          numeric(12,2),
+   @imp_neto         numeric(12,2),
+   @cve_moneda       varchar(1),
+   @tipo_cambio      numeric(8,2),
+   @num_docto_ref    varchar(40),
+   @tx_nota          varchar(200),
+   @ruta_docto_pdf   varchar(250),
+   @sit_c_x_p        varchar(2);
+
+declare
+   @dcve_empresa     varchar(4),
+   @did_cxp          int,
+   @dcve_operacion   varchar(4),
+   @did_proveedor    int,
+   @dcve_chequera    varchar(6),
+   @df_captura       date,
+   @df_pago          date,
+   @dimp_bruto       numeric(12,2),
+   @dimp_iva         numeric(12,2),
+   @dimp_neto        numeric(12,2),
+   @dcve_moneda      varchar(1),
+   @dtipo_cambio     numeric(8,2),
+   @dnum_docto_ref   varchar(40),
+   @dtx_nota         varchar(200),
+   @druta_docto_pdf  varchar(250),
+   @dsit_c_x_p       varchar(2);
+
+declare
+
+    @b_reg_correcto  bit,
+    @pje_iva         numeric(7,4),
+    @tx_error        varchar(300),
+    @tx_error_part   varchar(300),
+    @fol_audit       int;
+
+declare 
+
+    @k_verdadero     bit,
+    @k_falso         bit,
+    @k_activa        varchar(1), 
+    @k_cancelada     varchar(1),
+    @k_peso          varchar(1),
+    @k_dolar         varchar(1),
+    @k_fol_cxp       varchar(4),
+    @k_fol_audit     varchar(4);
+   
+select   
+    
+    @k_verdadero     = 1,
+    @k_falso         = 0,
+    @k_cancelada     = 'C',
+    @k_activa        = 'A', 
+    @k_cancelada     = 'C',
+    @k_peso          = 'P',
+    @k_dolar         = 'D',
+    @k_fol_cxp       = 'CXP',    
+    @k_fol_audit     = 'AUDI';
+    
+set  @pje_iva = (select PJE_IVA FROM CI_PARAMETRO);
+set  @b_reg_correcto =  @k_verdadero;
+set  @tx_error_part  =  ' ';
+
+select   @dcve_empresa     = i.CVE_EMPRESA from inserted i;
+select   @did_cxp          = i.ID_CXP from inserted i;
+select   @dcve_operacion   = i.CVE_OPERACION from inserted i;
+select   @did_proveedor    = i.ID_PROVEEDOR from inserted i;
+select   @dcve_chequera    = i.CVE_CHEQUERA from inserted i;
+select   @df_captura       = i.F_CAPTURA from inserted i;
+select   @df_pago          = i.F_PAGO from inserted i;
+select   @dimp_bruto       = i.IMP_BRUTO from inserted i;
+select   @dimp_iva         = i.IMP_IVA from inserted i;
+select   @dimp_neto        = i.IMP_NETO from inserted i;
+select   @dcve_moneda      = i.CVE_MONEDA from inserted i;
+select   @dtipo_cambio     = i.TIPO_CAMBIO from inserted i;
+select   @dnum_docto_ref   = i.NUM_DOCTO_REF from inserted i;
+select   @dtx_nota         = i.TX_NOTA from inserted i;
+select   @druta_docto_pdf  = i.RUTA_DOCTO_PDF from inserted i;
+select   @dsit_c_x_p       = i.SIT_C_X_P from inserted i;
+
+
+select   @cve_empresa      = i.CVE_EMPRESA from inserted i;
+select   @id_cxp           = i.ID_CXP from inserted i;
+select   @cve_operacion    = i.CVE_OPERACION from inserted i;
+select   @id_proveedor     = i.ID_PROVEEDOR from inserted i;
+select   @cve_chequera     = i.CVE_CHEQUERA from inserted i;
+select   @f_captura        = i.F_CAPTURA from inserted i;
+select   @f_pago           = i.F_PAGO from inserted i;
+select   @imp_bruto        = i.IMP_BRUTO from inserted i;
+select   @imp_iva          = i.IMP_IVA from inserted i;
+select   @imp_neto         = i.IMP_NETO from inserted i;
+select   @cve_moneda       = i.CVE_MONEDA from inserted i;
+select   @tipo_cambio      = i.TIPO_CAMBIO from inserted i;
+select   @num_docto_ref    = i.NUM_DOCTO_REF from inserted i;
+select   @tx_nota          = i.TX_NOTA from inserted i;
+select   @ruta_docto_pdf   = i.RUTA_DOCTO_PDF from inserted i;
+select   @sit_c_x_p        = i.SIT_C_X_P from inserted i;
+
+BEGIN 
+  SET NOCOUNT ON;
+
+  set  @f_captura   =  GETDATE()
+
+  IF   NOT EXISTS (SELECT * FROM CI_CUENTA_X_PAGAR  WHERE  CVE_EMPRESA    =  @cve_empresa AND
+                                                           ID_CXP         =  @id_cxp)
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part    =  @tx_error_part + ': La CXP NO existe';
+  END                                          
+
+  IF  @ruta_docto_pdf = null or @ruta_docto_pdf = ' '   
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part    =  @tx_error_part + ': No existe ruta PDF';
+  END                                          
+
+  IF  @num_docto_ref      = null or @num_docto_ref = ' '   
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part    =  @tx_error_part + ': Referencia vacia';
+  END                                          
+
+
+  IF  NOT EXISTS (SELECT * FROM CI_EMPRESA   WHERE  CVE_EMPRESA    =  @cve_empresa)
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part    =  @tx_error_part + ': Empresa no existe';
+  END                                          
+
+  IF  NOT EXISTS (SELECT * FROM CI_PROVEEDOR   WHERE  ID_PROVEEDOR     =  @id_proveedor)                                    
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part = @tx_error_part + ': Proveedor no existe';
+  END                                          
+
+  IF  NOT EXISTS (SELECT * FROM CI_CHEQUERA  WHERE  CVE_CHEQUERA   =  @cve_chequera)                                      
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part = @tx_error_part + ': Chequera no existe';
+  END
+
+  IF (@cve_moneda         <>  @k_peso   AND   @cve_moneda       <>  @k_dolar)       
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part = @tx_error_part + ': Moneda error';
+  END
+
+  IF (@sit_c_x_p    <>  @k_activa AND   @sit_c_x_p  <>  @k_cancelada)   
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part = @tx_error_part + ': Situacion no existe';
+  END
+  
+  IF  @imp_bruto                                                <=  0                                                  
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part = @tx_error_part + ':  Importe Bruto <= 0';
+  END
+  
+  IF  @cve_moneda      =  @k_dolar  AND  @tipo_cambio <=  0                                           
+  BEGIN
+    set @b_reg_correcto   =  @k_falso;
+    set @tx_error_part = @tx_error_part + ':  Tipo Cambio <= 0';
+  END                        
+           
+  IF  @b_reg_correcto                                        =  @k_verdadero                                      
+  BEGIN
+    set  @imp_iva          =  @imp_bruto * (@pje_iva / 100) 
+    set  @imp_neto         =  @imp_bruto + @imp_iva
+ 
+    IF   @dimp_bruto        <>   @imp_bruto
+    BEGIN
+      set  @imp_iva          =  @imp_bruto * (@pje_iva / 100) 
+      set  @imp_neto         =  @imp_bruto + @imp_iva
+
+      DELETE FROM CI_CONCILIA_CXP     WHERE CVE_EMPRESA  =  @cve_empresa AND
+                                            ID_CXP       =  @id_cxp 
+    END
+   
+    UPDATE CI_CUENTA_X_PAGAR   set
+           CVE_OPERACION       =  @cve_operacion,
+           ID_PROVEEDOR        =  @id_proveedor,
+           CVE_CHEQUERA        =  @cve_chequera,   
+           F_CAPTURA           =  @df_captura,
+           F_PAGO              =  @f_pago,
+           IMP_BRUTO           =  @imp_bruto,
+           IMP_IVA             =  @imp_iva,
+           IMP_NETO            =  @imp_neto,
+           CVE_MONEDA          =  @cve_moneda,
+           TIPO_CAMBIO         =  @tipo_cambio,
+           NUM_DOCTO_REF       =  @num_docto_ref,
+           TX_NOTA             =  @tx_nota,
+           RUTA_DOCTO_PDF      =  @ruta_docto_pdf,
+           SIT_C_X_P           =  @sit_c_x_p
+  
+  END
+  ELSE
+  BEGIN
+    set @tx_error = 'Error CI_CUENTA_X_P : ' + @cve_empresa + '  ' + CAST(@id_cxp AS varchar(10)) + @tx_error_part
+ 
+    set @fol_audit  =  (select NUM_FOLIO FROM CI_FOLIO WHERE CVE_FOLIO = @k_fol_audit)
+    
+    UPDATE CI_FOLIO
+           SET NUM_FOLIO = @fol_audit + 1
+    WHERE  CVE_FOLIO     = @k_fol_audit
+
+    insert into  CI_AUDIT_ERROR (
+                 ID_FOLIO,
+                 F_OPERACION,
+                 TX_ERROR)      
+           values
+                (@fol_audit,
+                 GETDATE(),
+                 @tx_error)
+    COMMIT
+--    RAISERROR('El INSERT TIENE INCONSISTENCIA DE INFORMACION',11,1)
+  END    
+END

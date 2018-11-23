@@ -1,0 +1,112 @@
+
+BEGIN
+  DECLARE @pTVP OB_FACTURA
+
+  DECLARE 
+  @b_factura                varchar(1)             =  1,
+  @b_factura_pagada         bit                    =  1,
+  @cve_chequera             varchar(6)             =  'XMDB437',
+  @cve_empresa              varchar(4)             =  'CU',
+  @cve_f_moneda             varchar(1)             =  'X',
+  @cve_r_moneda             varchar(1)             =  'D',
+  @cve_tipo_contrato        varchar(1)             =  ' ',
+  @f_cancelacion            date                   =  NULL,
+  @f_captura                date                   =  '2018-10-12',
+  @f_compromiso_pago        date                   =  NULL,
+  @f_operacion              date                   =  '2018-10-12',
+  @f_real_pago              date                   =  '2018-10-12',
+  @firma                    varchar(10)            =  ' ',
+  @id_concilia_cxc          int                    =  123,
+  @id_cxc                   int                    =  123,
+  @id_fact_parcial          int                    =  1,
+  @id_venta                 int                    =  122,
+  @imp_f_bruto              numeric(12,2)          =  100,
+  @imp_f_iva                numeric(12,2)          =  15,
+  @imp_f_neto               numeric(12,2)          =  110,
+  @imp_r_neto               numeric(12,2)          =  0,
+  @imp_r_neto_com           numeric(12,2)          =  0,
+  @nombre_docto_pdf         varchar(25)            =  ' ', 
+  @nombre_docto_xml         varchar(25)            =  ' ',
+  @serie                    varchar(6)             =  'CUM',
+  @sit_concilia_cxc         varchar(2)             =  ' ',
+  @sit_transaccion          varchar(2)             =  'X',
+  @tipo_cambio              numeric(8,4)           =  '19.90',
+  @tipo_cambio_liq          numeric(8,4)           =  0,
+  @tx_nota                  varchar(400)           =  ' ',
+  @tx_nota_cobranza         varchar(200)           =  ' '
+
+  INSERT INTO @pTVP (
+  B_FACTURA,
+  B_FACTURA_PAGADA,
+  CVE_CHEQUERA,
+  CVE_EMPRESA,
+  CVE_F_MONEDA,
+  CVE_R_MONEDA,
+  CVE_TIPO_CONTRATO,
+  F_CANCELACION,
+  F_CAPTURA,
+  F_COMPROMISO_PAGO,
+  F_OPERACION,
+  F_REAL_PAGO,
+  FIRMA,
+  ID_CONCILIA_CXC,
+  ID_CXC,
+  ID_FACT_PARCIAL,
+  ID_VENTA,
+  IMP_F_BRUTO,
+  IMP_F_IVA,
+  IMP_F_NETO,
+  IMP_R_NETO,
+  IMP_R_NETO_COM,
+  NOMBRE_DOCTO_PDF,
+  NOMBRE_DOCTO_XML,
+  SERIE,
+  SIT_CONCILIA_CXC,
+  SIT_TRANSACCION,
+  TIPO_CAMBIO,
+  TIPO_CAMBIO_LIQ,
+  TX_NOTA,
+  TX_NOTA_COBRANZA)
+  VALUES (
+  @b_factura,
+  @b_factura_pagada,
+  @cve_chequera,
+  @cve_empresa,
+  @cve_f_moneda,
+  @cve_r_moneda,
+  @cve_tipo_contrato,
+  @f_cancelacion,
+  @f_captura,
+  @f_compromiso_pago,
+  @f_operacion,
+  @f_real_pago,
+  @firma,
+  @id_concilia_cxc,
+  @id_cxc,
+  @id_fact_parcial,
+  @id_venta,
+  @imp_f_bruto,
+  @imp_f_iva,
+  @imp_f_neto,
+  @imp_r_neto,
+  @imp_r_neto_com,
+  @nombre_docto_pdf,
+  @nombre_docto_xml,
+  @serie,
+  @sit_concilia_cxc,
+  @sit_transaccion,
+  @tipo_cambio,
+  @tipo_cambio_liq,
+  @tx_nota,
+  @tx_nota_cobranza)
+
+--  exec spValOB_FACTURAExt 'ADMON01', 'C',
+--                         'CI_FACTURA', @pTVP, 'es'
+
+exec spValOB_FACTURA 'ADMON01', 'C', @pTVP, 'en'
+--  SELECT * FROM @pTVP
+
+END
+
+
+--SELECT * FROM ADMON01PB.dbo.CI_FACTURA

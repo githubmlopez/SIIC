@@ -1,0 +1,94 @@
+USE [ADMON01]
+GO
+
+--exec spCalSdosCuentas 2017, 07 
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+--EXECUTE spCalCifrasControl 
+CREATE PROCEDURE [dbo].[spCalCifrasControl]   @pAno int,
+                                           @pMes int
+
+AS
+BEGIN
+
+
+--CREATE TYPE SDOSCTAS AS TABLE
+--(CVE_EMPRESA          varchar(4)           not null,
+-- ANO_MES              varchar(4)           not null,
+-- CTA_CONTABLE         varchar(30)          not null,
+-- IMP_CARGO_C          numeric(16,2)        null,
+-- IMP_ABONO_C          numeric(16,2)        null)
+
+declare @SdosCtas as SDOSCTAS
+
+MERGE CI_BALANZA_OPERATIVA AS TARGET
+   USING CI_SDO_CIERRE_ANUAL AS SOURCE 
+      ON TARGET.CVE_EMPRESA            = SOURCE.CVE_EMPRESA  AND
+         SUBSTRING(TARGET.ANO_MES,1,4) = SOURCE.ANO          AND
+		 TARGET.CTA_CONTABLE           = SOURCE.CTA_CONTABLE AND 
+		 TARGET.ANO_MES                = dbo.fnArmaAnoMes (@pano, @pMes)
+
+WHEN MATCHED THEN
+   UPDATE 
+      SET SDO_INICIAL  = SOURCE.IMP_SALDO;
+
+INSERT	INTO @SdosCtas 	
+SELECT CVE_EMPRESA, ANO_MES, CTA_CONTABLE, SUM(IMP_DEBE), SUM(IMP_HABER)  FROM CI_DET_POLIZA
+        WHERE ANO_MES  =  dbo.fnArmaAnoMes (@pano, @pMes)
+		GROUP BY CVE_EMPRESA, ANO_MES, CTA_CONTABLE
+--
+MERGE INTO CI_BALANZA_OPERATIVA TARGET
+   USING (
+          SELECT CVE_EMPRESA, CTA_CONTABLE, 
+		  dbo.fnArmaAnoMes (@pano, @pMes) AS ANO_MES,
+		  SUM(IMP_DEBE) AS td, SUM(IMP_HABER) AS th
+            FROM CI_DET_POLIZA 
+           WHERE ANO_MES  <>  dbo.fnArmaAnoMes (@pano, @pMes)
+		   GROUP BY CVE_EMPRESA, ANO_MES, CTA_CONTABLE
+         ) SOURCE
+      ON TARGET.CVE_EMPRESA  = SOURCE.CVE_EMPRESA AND
+         TARGET.ANO_MES      = SOURCE.ANO_MES AND
+		 TARGET.CTA_CONTABLE = SOURCE.CTA_CONTABLE 
+WHEN MATCHED THEN
+   UPDATE 
+      SET TARGET.SDO_INICIAL = TARGET.SDO_INICIAL - SOURCE.td + SOURCE.th;
+
+--
+
+MERGE CI_BALANZA_OPERATIVA AS TARGET
+   USING @SdosCtas AS SOURCE 
+      ON TARGET.CVE_EMPRESA  = SOURCE.CVE_EMPRESA AND
+         TARGET.ANO_MES      = SOURCE.ANO_MES     AND
+		 TARGET.CTA_CONTABLE = SOURCE.CTA_CONTABLE 
+WHEN MATCHED THEN
+   UPDATE 
+      SET IMP_CARGO  = SOURCE.IMP_CARGO_C, 
+          IMP_ABONO  = SOURCE.IMP_ABONO_C
+WHEN NOT MATCHED BY TARGET THEN 
+   INSERT (CVE_EMPRESA,
+           ANO_MES,
+           CTA_CONTABLE,
+		   SDO_INICIAL,
+		   IMP_CARGO,
+           IMP_ABONO,
+           SDO_FINAL,
+           SALDO_INICIAL_C,
+           IMP_CARGO_C,
+           IMP_ABONO_C,
+           SDO_FINAL_C) 
+   VALUES
+          (SOURCE.CVE_EMPRESA,
+		   SOURCE.ANO_MES,
+		   SOURCE.CTA_CONTABLE,
+		   0,
+		   0,
+		   0,
+		   0,
+		   0,
+		   SOURCE.IMP_CARGO_C,
+		   SOURCE.IMP_ABONO_C,
+		   SOURCE.IMP_ABONO_C - SOURCE.IMP_CARGO_C);
+END
+

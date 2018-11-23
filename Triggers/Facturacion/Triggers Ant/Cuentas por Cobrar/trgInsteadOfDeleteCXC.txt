@@ -1,0 +1,99 @@
+USE [ADMON01]
+GO
+/****** Object:  Trigger [dbo].[trgInsteadOfDelete]    Script Date: 01/10/2016 07:51:59 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- Create trigger on table CI_FACTURA for Insert statement
+ALTER  TRIGGER [dbo].[trgInsteadOfDeleteCxP] ON [dbo].[CI_FACTURA]
+INSTEAD OF DELETE
+AS
+declare
+   @dcve_empresa      varchar(4),
+   @dserie            varchar(6),
+   @did_cxc           int,
+   @did_cliente       numeric(10),
+   @df_operacion      date,
+   @df_captura        date,
+   @dimp_bruto        numeric(12,2),
+   @dimp_iva          numeric(12,2),
+   @dimp_neto         numeric(12,2),
+   @dcve_moneda       varchar(1),
+   @dimp_bruto_liq    numeric(12,2),
+   @dimp_iva_liq      numeric(12,2),
+   @dimp_neto_liq     numeric(12,2),
+   @dcve_moneda_liq   varchar(1),
+   @dtipo_cambio      numeric(8,2),
+   @dfirma            varchar(10),
+   @dcve_chequera     varchar(6),
+   @druta_docto_pdf   varchar(250),
+   @db_factura_pagada bit,
+   @dtx_nota          varchar(400),
+   @dsit_transaccion  varchar(2);
+
+declare
+
+    @b_reg_correcto  bit,
+    @pje_iva         numeric(7,4),
+    @tx_error        varchar(300),
+    @tx_error_part   varchar(300),
+    @fol_audit       int,
+    @tot_item        numeric(12,2);
+
+declare 
+
+    @k_verdadero     bit,
+    @k_falso         bit,
+    @k_activa        varchar(1), 
+    @k_cancelada     varchar(1),
+    @k_peso          varchar(1),
+    @k_dolar         varchar(1),
+    @k_fol_audit     varchar(4);
+   
+select   
+    
+    @k_verdadero     = 1,
+    @k_falso         = 0,
+    @k_cancelada     = 'C',
+    @k_activa        = 'A', 
+    @k_cancelada     = 'C',
+    @k_peso          = 'P',
+    @k_dolar         = 'D',
+    @k_fol_audit     = 'AUDI';
+       
+set  @pje_iva = (select PJE_IVA FROM CI_PARAMETRO)
+set  @b_reg_correcto =  @k_verdadero
+set  @tx_error_part  =  ' '
+
+
+select   @dcve_empresa      = d.CVE_EMPRESA from inserted d;
+select   @dserie            = d.SERIE from inserted d;
+select   @did_cxc           = d.ID_CXC from inserted d;
+select   @did_cliente       = d.ID_CLIENTE from inserted d;
+select   @dcve_chequera     = d.CVE_CHEQUERA from inserted d;
+select   @df_operacion      = d.F_OPERACION from inserted d;
+select   @df_captura        = d.F_CAPTURA from inserted d;
+select   @dimp_bruto        = d.IMP_BRUTO from inserted d;
+select   @dimp_iva          = d.IMP_IVA from inserted d;
+select   @dimp_neto         = d.IMP_NETO from inserted d;
+select   @dcve_moneda       = d.CVE_MONEDA from inserted d;
+select   @dimp_bruto_liq    = d.IMP_BRUTO_LIQ from inserted d;
+select   @dimp_iva_liq      = d.IMP_IVA_LIQ from inserted d;
+select   @dimp_neto_liq     = d.IMP_NETO_LIQ from inserted d;
+select   @dcve_moneda_liq   = d.CVE_MONEDA_LIQ from inserted d;
+select   @dtipo_cambio      = d.TIPO_CAMBIO from inserted d;
+select   @dfirma            = d.FIRMA from inserted d;
+select   @druta_docto_pdf   = d.RUTA_DOCTO_PDF from inserted d;
+select   @db_factura_pagada = d.B_FACTURA_PAGADA from inserted d; 
+select   @dtx_nota          = d.TX_NOTA from inserted d;
+select   @dsit_transaccion  = d.SIT_TRANSACCION from inserted d;
+
+BEGIN 
+  SET NOCOUNT ON;
+
+  set @tx_error_part = ' No es valido dar de Baja'
+
+  set @tx_error = 'Error Update CI_FACTURA : ' + @dcve_empresa + '  ' + @dserie + '  ' + CAST(@did_cxc AS varchar(10)) + @tx_error_part
+ 
+END
