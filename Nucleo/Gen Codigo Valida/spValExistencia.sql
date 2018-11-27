@@ -176,7 +176,7 @@ BEGIN
       SET @incremento2 = 2
 	END
 
-    SET  @cadena_script = @nom_campo_w + REPLICATE(' ', (25 - LEN(@nom_campo_w))) + '=  '  +  
+    SET  @cadena_script = @nom_campo_w + REPLICATE(' ', (30 - LEN(@nom_campo_w))) + '=  '  +  
 	'@' + LOWER(@nom_campo)
 
 	IF  @RowCount < @NunRegistros

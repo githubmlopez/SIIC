@@ -5,7 +5,6 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
---DROP PROCEDURE  spActCifControl
 ALTER PROCEDURE spActCifControl  
        @pIdProceso          int,
        @pIdTarea            int,
