@@ -7,9 +7,12 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE PROCEDURE [dbo].[spGenDedEmpleado] (@pIdProceso     numeric(9),        
                                            @pIdTarea       numeric(9),
+										   @pIdCliente     int,
+                                           @pCveEmpresa    varchar(4),
+                                           @pCveAplicacion varchar(10),
 										   @pCveUsuario    varchar(8),
 										   @pCveTipoNomina varchar(2),
-										   @AnoPeriodo     varchar(8),
+										   @pAnoPeriodo    varchar(8),
 										   @pError         varchar(80)  OUT,
 								           @pMsgError      varchar(400) OUT)
 AS
@@ -89,7 +92,7 @@ BEGIN
   DOMICILIO,       
   TEL_CELULAR,     
   TEL_CASA,        
-  SIT_EMPLEADO     
+  SIT_EMPLEADO)     
   SELECT
   ID_CLIENTE,
   CVE_EMPRESA, 
@@ -109,11 +112,11 @@ BEGIN
   TEL_CELULAR,     
   TEL_CASA,        
   SIT_EMPLEADO  
-  FROM    NO_EMPLEADO
+  FROM    NO_EMPLEADO	e
   WHERE
-  p.ID_CLIENTE       = @pIdCliente      AND
-  p.CVE_EMPRESA      = @pCveEmpresa     AND
-  p.CVE_TIPO_NOMINA  = @pCveTipoNomina  
+  e.ID_CLIENTE       = @pIdCliente      AND
+  e.CVE_EMPRESA      = @pCveEmpresa     AND
+  e.CVE_TIPO_NOMINA  = @pCveTipoNomina  
  
   SET @NunRegistros = @@ROWCOUNT
 ------------------------------------------------------------------------------------------------------

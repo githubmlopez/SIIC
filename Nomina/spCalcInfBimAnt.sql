@@ -5,16 +5,32 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE PROCEDURE [dbo].[spCalcInfBimAnt] (@pIdCliente       int,
-                                          @pCveEmpresa      varchar(4),
-										  @pIdEmpleado      int,
-								          @pCveTipoNomina   varchar(2),
-									      @pAnoPeriodo      varchar(6),
-                                          @pSalBimAnt       numeric(16,2) OUT,
-										  @pSdoDiaBimAnt    numeric(16,2) OUT,
-                        				  @pDiasBimAnt      int OUT,
-                                          @pIncapBimAnt     int OUT,
-										  @pFaltasBimAnt    int OUT)
+SET NOCOUNT ON
+GO
+IF  EXISTS( SELECT 1 FROM ADNOMINA01.sys.procedures WHERE Name =  'spCalcInfBimAnt')
+BEGIN
+  DROP  PROCEDURE spCalcInfBimAnt
+END
+GO
+-- EXEC spCalcInfBimAnt 1,1,1,'CU','NOMINA','S','201803',1,0,0,0,0,0,' ',' '
+CREATE PROCEDURE [dbo].[spCalcInfBimAnt]
+(
+@pIdProceso       int,
+@pIdTarea         int,
+@pIdCliente       int,
+@pCveEmpresa      varchar(4),
+@pCveAplicacion   varchar(10),
+@pCveTipoNomina   varchar(2),
+@pAnoPeriodo      varchar(6),
+@pIdEmpleado      int,
+@pSalBimAnt       numeric(16,2) OUT,
+@pSdoDiaBimAnt    numeric(16,6) OUT,
+@pDiasBimAnt      int OUT,
+@pIncapBimAnt     int OUT,
+@pFaltasBimAnt    int OUT,
+@pError           varchar(80) OUT,
+@pMsgError        varchar(400) OUT
+)
 
 AS
 BEGIN
@@ -25,14 +41,16 @@ BEGIN
            @dias_bim_ant       int            =  0,
 		   @acum_percep        numeric(16,2)  =  0,
 		   @dias_incap         int            =  0,
-		   @dias_falta         int            =  0
+		   @dias_falta         int            =  0,
+		   @b_correcto         bit            =  1
 
   DECLARE  @NunRegistros      int, 
            @RowCount          int
 
   DECLARE  @k_prim_bim         varchar(2)     =  '01'
   DECLARE  @k_ult_bim          varchar(2)     =  '06',
-           @k_verdadero        bit            =  1
+           @k_verdadero        bit            =  1,
+		   @k_falso            bit            =  0
 
   IF EXISTS(
   SELECT 1 FROM NO_PERIODO p  WHERE 
@@ -41,19 +59,19 @@ BEGIN
   p.CVE_TIPO_NOMINA = @pCveTipoNomina  AND
   p.ANO_PERIODO     = @pAnoPeriodo)      
   BEGIN
-      SELECT @ano_bimestre =  SUBSTRING(p.CVE_BIMESTRE,1,4), @num_bimestre = SUBSTRING(p.CVE_BIMESTRE,5,2)
-	  FROM NO_PERIODO p  WHERE 
-      p.ID_CLIENTE      = @pIdCliente      AND
-      p.CVE_EMPRESA     = @pCveEmpresa     AND
-      p.CVE_TIPO_NOMINA = @pCveTipoNomina  AND
-      p.ANO_PERIODO     = @pAnoPeriodo      
+    SELECT @ano_bimestre = SUBSTRING(p.CVE_BIMESTRE,1,4),@num_bimestre = SUBSTRING(p.CVE_BIMESTRE,5,2)
+	FROM NO_PERIODO p  WHERE 
+    p.ID_CLIENTE      = @pIdCliente      AND
+    p.CVE_EMPRESA     = @pCveEmpresa     AND
+    p.CVE_TIPO_NOMINA = @pCveTipoNomina  AND
+    p.ANO_PERIODO     = @pAnoPeriodo      
   END
   ELSE
   BEGIN
+    SET  @b_correcto      =  @k_falso
     SET  @ano_bimestre    =  ' '
 	SET  @num_bimestre    =  ' '
   END
-
   IF  @num_bimestre  =  @k_prim_bim
   BEGIN
     SET  @cve_bim_ant  =  CONVERT(VARCHAR(4),CONVERT(INT,@ano_bimestre) - 1)  +
@@ -82,7 +100,7 @@ BEGIN
   p.ID_CLIENTE       = @pIdCliente      AND
   p.CVE_EMPRESA      = @pCveEmpresa     AND
   p.CVE_TIPO_NOMINA  = @pCveTipoNomina  AND
-  p.ID_CVE_BIMESTRE  = @cve_bim_ant
+  p.CVE_BIMESTRE     = @cve_bim_ant
 
   SET @NunRegistros = @@ROWCOUNT
 ------------------------------------------------------------------------------------------------------
@@ -98,39 +116,58 @@ BEGIN
     SELECT  @acum_percep = isnull(SUM(n.IMP_CONCEPTO),0)
     FROM    NO_NOMINA n
     WHERE
-    p.ID_CLIENTE       = @pIdCliente      AND
-    p.CVE_EMPRESA      = @pCveEmpresa     AND
-    p.CVE_TIPO_NOMINA  = @pCveTipoNomina  AND
-    p.ANO_PERIODO      = @ano_periodo     AND
-	p.CVE_CONCEPTO     IN
+    n.ID_CLIENTE       = @pIdCliente      AND
+    n.CVE_EMPRESA      = @pCveEmpresa     AND
+    n.CVE_TIPO_NOMINA  = @pCveTipoNomina  AND
+    n.ANO_PERIODO      = @ano_periodo     AND
+	n.CVE_CONCEPTO     IN
 	(SELECT c.CVE_CONCEPTO FROM NO_CONCEPTO c WHERE
 	 c.ID_CLIENTE      = @pIdCliente      AND
      c.CVE_EMPRESA     = @pCveEmpresa     AND
 	 c.B_GRABABLE      = @k_verdadero) 
 
-    SET  @pSdoDiaBimAnt  =  @pSdoDiaBimAnt  + @acum_percep
+    SET  @pSalBimAnt  =  @pSalBimAnt  + @acum_percep
 
-    EXEC spCalNumIncap  @pIdCliente,
+    EXEC spCalNumIncap  @pIdProceso,
+                        @pIdTarea,
+	                    @pIdCliente,
                         @pCveEmpresa,
+						@pCveAplicacion,
+						@pCveTipoNomina,
+						@pAnoPeriodo,
 		                @pIdEmpleado,
-			            @pCveTipoNomina,
-					    @pAnoPeriodo,
-					    @dias_incap  OUT
+					    @dias_incap  OUT,
+						@pError OUT,
+                        @pMsgError OUT
 
     SET  @pIncapBimAnt  =  @pIncapBimAnt  +  @dias_incap
 
+	EXEC spCalNumFaltas @pIdProceso,
+                        @pIdTarea,
+	                    @pIdCliente,
+                        @pCveEmpresa,
+					    @pCveAplicacion,
+					    @pCveTipoNomina,
+					    @pAnoPeriodo,
+		                @pIdEmpleado,
+					    @dias_falta  OUT,
+					    @pError OUT,
+                        @pMsgError OUT
+
+	SET  @pFaltasBimAnt  =  @pFaltasBimAnt  +  @dias_falta
+	
     SET @RowCount     = @RowCount + 1
 
   END
 
-  EXEC spCalNumFaltas  @pIdCliente,
-                       @pCveEmpresa,
-	                   @pIdEmpleado,
-		               @pCveTipoNomina,
-			           @pAnoPeriodo,
-					   @pFaltasBimAnt  OUT
-
   SET  @pDiasBimAnt   =  ISNULL((SELECT DIAS_BIMESTRE FROM NO_BIMESTRE  WHERE CVE_BIMESTRE = @cve_bim_ant),0)
-  SET  @pSdoDiaBimAnt =  @sdo_bim_ant / @pDiasBimAnt
+  
+  SET  @pSdoDiaBimAnt =  @pSalBimAnt / CONVERT(NUMERIC(6,2),(@pDiasBimAnt - @pFaltasBimAnt - @pIncapBimAnt))
+
+  --SELECT CONVERT(VARCHAR(18),@pSalBimAnt)
+  --SELECT CONVERT(VARCHAR(18),@pFaltasBimAnt)
+  --SELECT CONVERT(VARCHAR(18),@pIncapBimAnt)
+  --SELECT CONVERT(VARCHAR(18),@pDiasBimAnt)
+  --SELECT CONVERT(VARCHAR(18),@pSdoDiaBimAnt)
 END
 

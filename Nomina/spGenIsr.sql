@@ -5,13 +5,27 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE PROCEDURE [dbo].[spGenIsr]    (@pIdProceso     numeric(9),        
-                                           @pIdTarea       numeric(9),
-										   @pCveUsuario    varchar(8),
-										   @pCveTipoNomina varchar(2),
-										   @AnoPeriodo     varchar(8),
-										   @pError         varchar(80)  OUT,
-								           @pMsgError      varchar(400) OUT)
+SET NOCOUNT ON
+GO
+IF  EXISTS( SELECT 1 FROM ADNOMINA01.sys.procedures WHERE Name =  'spRegIsr')
+BEGIN
+  DROP  PROCEDURE spRegIsr
+END
+GO
+-- EXEC spRegIsr 1,1,'MARIO',1,'CU','NOMINA','S','201803',' ',' '
+CREATE PROCEDURE [dbo].[spRegIsr] 
+(
+@pIdProceso       int,
+@pIdTarea         int,
+@pCveUsuario      varchar(10),
+@pIdCliente       int,
+@pCveEmpresa      varchar(4),
+@pCveAplicacion   varchar(10),
+@pCveTipoNomina   varchar(2),
+@pAnoPeriodo      varchar(6),
+@pError           varchar(80) OUT,
+@pMsgError        varchar(400) OUT
+)
 AS
 BEGIN
 
@@ -37,9 +51,6 @@ BEGIN
 
   DECLARE  @NunRegistros      int   =  0, 
            @RowCount          int   =  0
-
-  DECLARE  @dias_falta        int   =  0,
-           @dias_incap        int   =  0
 
   DECLARE  @k_verdadero       bit   =  1,
            @k_falso           bit   =  0
@@ -89,7 +100,7 @@ BEGIN
   DOMICILIO,       
   TEL_CELULAR,     
   TEL_CASA,        
-  SIT_EMPLEADO     
+  SIT_EMPLEADO)     
   SELECT
   ID_CLIENTE,
   CVE_EMPRESA, 
@@ -109,11 +120,11 @@ BEGIN
   TEL_CELULAR,     
   TEL_CASA,        
   SIT_EMPLEADO  
-  FROM    NO_EMPLEADO
+  FROM    NO_EMPLEADO e
   WHERE
-  p.ID_CLIENTE       = @pIdCliente      AND
-  p.CVE_EMPRESA      = @pCveEmpresa     AND
-  p.CVE_TIPO_NOMINA  = @pCveTipoNomina  
+  e.ID_CLIENTE       = @pIdCliente      AND
+  e.CVE_EMPRESA      = @pCveEmpresa     AND
+  e.CVE_TIPO_NOMINA  = @pCveTipoNomina  
  
   SET @NunRegistros = @@ROWCOUNT
 ------------------------------------------------------------------------------------------------------
@@ -121,16 +132,38 @@ BEGIN
 
   WHILE @RowCount <= @NunRegistros
   BEGIN
-    EXEC spRegIsr   @pIdProceso,
-					@pIdTarea,
-					@pCveUsuario,
-					@pIdCliente,
-                    @pCveEmpresa,
-					@pCveTipoNomina,
-					@pAnoPeriodo,
-					@id_empleado,
-					@pError,
-					@pMsgError
+    SELECT @id_cliente		 =  ID_CLIENTE,                
+           @cve_empresa        =  CVE_EMPRESA,         
+           @id_empleado        =  ID_EMPLEADO,                 
+           @cve_tipo_nomina    =  CVE_TIPO_NOMINA,          
+           @zona               =  ZONA,                 
+           @cve_tipo_empleado  =  CVE_TIPO_EMPLEADO,      
+           @cve_tipo_percep    =  CVE_TIPO_PERCEP,          
+           @nom_empleado       =  NOM_EMPLEADO,        
+           @f_ingreso          =  F_INGRESO,                
+           @curp               =  CURP,         
+           @rfc                =  RFC,         
+           @no_imss            =  NO_IMSS,         
+           @sueldo_mensual     =  SUELDO_MENSUAL,       
+           @cve_vendedor       =  CVE_VENDEDOR,          
+           @domicilio          =  DOMICILIO,        
+           @tel_celular        =  TEL_CELULAR,         
+           @tel_casa           =  TEL_CASA,         
+           @sit_empleado       =  SIT_EMPLEADO
+		   FROM  @TEmpleado  WHERE  RowID  =  @RowCount   
+
+    EXEC  spRegIsr
+    @pIdProceso,
+    @pIdTarea,
+    @pCveUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @pCveTipoNomina,
+    @pAnoPeriodo,
+    @id_empleado,
+    @pError OUT,
+    @pMsgError OUT
 
     SET @RowCount     = @RowCount + 1
   END

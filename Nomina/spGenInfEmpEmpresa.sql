@@ -7,13 +7,13 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
-IF  EXISTS( SELECT 1 FROM ADNOMINA01.sys.procedures WHERE Name =  'spGenAporImss')
+IF  EXISTS( SELECT 1 FROM ADNOMINA01.sys.procedures WHERE Name =  'spGenInfEmpEmpresa')
 BEGIN
-  DROP  PROCEDURE spGenAporImss
+  DROP  PROCEDURE spGenInfEmpEmpresa
 END
 GO
--- EXEC spGenAporImss 1,1,'MARIO',1,'CU','NOMINA','S','201801',' ',' '
-CREATE PROCEDURE [dbo].[spGenAporImss] 
+-- EXEC spGenInfEmpEmpresa 1,1,'MARIO',1,'CU','NOMINA','S','201803',' ',' '
+CREATE PROCEDURE [dbo].[spGenInfEmpEmpresa] 
 (
 @pIdProceso       int,
 @pIdTarea         int,
@@ -51,9 +51,6 @@ BEGIN
 
   DECLARE  @NunRegistros      int   =  0, 
            @RowCount          int   =  0
-
-  DECLARE  @dias_falta        int   =  0,
-           @dias_incap        int   =  0
 
   DECLARE  @k_verdadero       bit   =  1,
            @k_falso           bit   =  0
@@ -155,19 +152,18 @@ BEGIN
            @sit_empleado       =  SIT_EMPLEADO
 		   FROM  @TEmpleado  WHERE  RowID  =  @RowCount   
 
-    EXEC spRegImss  
-         @pIdProceso,
-         @pIdTarea,
-         @pCveUsuario,
-         @pIdCliente,
-         @pCveEmpresa,
-         @pCveAplicacion,
-         @pCveTipoNomina,
-         @pAnoPeriodo,
-         @id_empleado,
-		 @sueldo_mensual,
-         @pError,
-         @pMsgError
+    EXEC spRegInfEmpEmpresa
+    @pIdProceso,
+    @pIdTarea,
+    @pCveUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @pCveTipoNomina,
+    @pAnoPeriodo,
+    @id_empleado,
+    @pError OUT,
+    @pMsgError OUT
 
     SET @RowCount     = @RowCount + 1
   END
