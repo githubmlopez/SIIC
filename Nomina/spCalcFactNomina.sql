@@ -17,6 +17,7 @@ CREATE PROCEDURE [dbo].[spCalcFactNomina]
 (
 @pIdProceso       int,
 @pIdTarea         int,
+@pCodigoUsuario   varchar(20),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),
@@ -98,7 +99,16 @@ BEGIN
   BEGIN
     SET  @pError    =  'Empresa inexistente ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
-    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
+    EXECUTE spCreaTareaEvento 
+	  @pIdProceso,
+      @pIdTarea,
+      @pCodigoUsuario,
+      @pIdCliente,
+      @pCveEmpresa,
+      @pCveAplicacion,
+      @k_warning,
+      @pError,
+      @pMsgError
   END
 END
 

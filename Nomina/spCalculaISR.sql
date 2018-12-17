@@ -17,7 +17,7 @@ CREATE PROCEDURE [dbo].[spCalculaISR]
 (
 @pIdProceso       int,
 @pIdTarea         int,
-@pCveUsuario      varchar(10),
+@pCodigoUsuario   varchar(20),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),

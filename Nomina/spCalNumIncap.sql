@@ -18,6 +18,7 @@ CREATE PROCEDURE [dbo].[spCalNumIncap]
 (
 @pIdProceso       int,
 @pIdTarea         int,
+@pCodigoUsuario   varchar(20),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),

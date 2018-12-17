@@ -17,13 +17,18 @@ CREATE PROCEDURE [dbo].[spRegIsr]
 (
 @pIdProceso       numeric(9),
 @pIdTarea         numeric(9),
-@pCveUsuario      varchar(10),
+@pCodigoUsuario   varchar(20),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),
 @pCveTipoNomina   varchar(2),
 @pAnoPeriodo      varchar(6),
 @pIdEmpleado      int,
+@pZona            int,
+@pCveTipoEmpleado varchar(2),
+@pCveTipoPercep   varchar(2),
+@pFIngreso        date,
+@pSueldoMensual   numeric(16,2),
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
@@ -64,7 +69,7 @@ BEGIN
   EXEC spCalculaISR  
   @pIdProceso,
   @pIdTarea,
-  @pCveUsuario,
+  @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
   @pCveAplicacion,
@@ -82,7 +87,7 @@ BEGIN
   EXEC spInsPreNomina  
   @pIdProceso,
   @pIdTarea,
-  @pCveUsuario,
+  @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
   @pCveAplicacion,
@@ -104,7 +109,7 @@ BEGIN
   EXEC spInsPreNomina  
   @pIdProceso,
   @pIdTarea,
-  @pCveUsuario,
+  @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
   @pCveAplicacion,

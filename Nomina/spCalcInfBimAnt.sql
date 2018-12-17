@@ -17,6 +17,7 @@ CREATE PROCEDURE [dbo].[spCalcInfBimAnt]
 (
 @pIdProceso       int,
 @pIdTarea         int,
+@pCodigoUsuario   varchar(20),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),
@@ -50,7 +51,8 @@ BEGIN
   DECLARE  @k_prim_bim         varchar(2)     =  '01'
   DECLARE  @k_ult_bim          varchar(2)     =  '06',
            @k_verdadero        bit            =  1,
-		   @k_falso            bit            =  0
+		   @k_falso            bit            =  0,
+		   @k_warning          varchar(1)     =  'W'
 
   IF EXISTS(
   SELECT 1 FROM NO_PERIODO p  WHERE 
@@ -130,6 +132,7 @@ BEGIN
 
     EXEC spCalNumIncap  @pIdProceso,
                         @pIdTarea,
+						@pCodigoUsuario,
 	                    @pIdCliente,
                         @pCveEmpresa,
 						@pCveAplicacion,
@@ -144,6 +147,7 @@ BEGIN
 
 	EXEC spCalNumFaltas @pIdProceso,
                         @pIdTarea,
+						@pCodigoUsuario,
 	                    @pIdCliente,
                         @pCveEmpresa,
 					    @pCveAplicacion,
@@ -162,12 +166,30 @@ BEGIN
 
   SET  @pDiasBimAnt   =  ISNULL((SELECT DIAS_BIMESTRE FROM NO_BIMESTRE  WHERE CVE_BIMESTRE = @cve_bim_ant),0)
   
-  SET  @pSdoDiaBimAnt =  @pSalBimAnt / CONVERT(NUMERIC(6,2),(@pDiasBimAnt - @pFaltasBimAnt - @pIncapBimAnt))
-
-  --SELECT CONVERT(VARCHAR(18),@pSalBimAnt)
-  --SELECT CONVERT(VARCHAR(18),@pFaltasBimAnt)
-  --SELECT CONVERT(VARCHAR(18),@pIncapBimAnt)
-  --SELECT CONVERT(VARCHAR(18),@pDiasBimAnt)
-  --SELECT CONVERT(VARCHAR(18),@pSdoDiaBimAnt)
+  IF  @pDiasBimAnt  =  0
+  BEGIN
+    SET  @pError    =  'Dias Bim. Ant en ceros ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento
+	  @pIdProceso,
+      @pIdTarea,
+      @pCodigoUsuario,
+      @pIdCliente,
+      @pCveEmpresa,
+      @pCveAplicacion,
+      @k_warning,
+      @pError,
+      @pMsgError
+  END
+  ELSE
+  BEGIN
+    SET  @pSdoDiaBimAnt =  @pSalBimAnt / CONVERT(NUMERIC(6,2),(@pDiasBimAnt - @pFaltasBimAnt - @pIncapBimAnt))
+  END
+--  SELECT CONVERT(VARCHAR(18),@cve_bim_ant)
+--  SELECT CONVERT(VARCHAR(18),@pSalBimAnt)
+--  SELECT CONVERT(VARCHAR(18),@pFaltasBimAnt)
+--  SELECT CONVERT(VARCHAR(18),@pIncapBimAnt)
+--  SELECT CONVERT(VARCHAR(18),@pDiasBimAnt)
+--  SELECT CONVERT(VARCHAR(18),@pSdoDiaBimAnt)
 END
 

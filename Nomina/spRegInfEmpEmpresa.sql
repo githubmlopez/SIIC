@@ -17,20 +17,27 @@ CREATE PROCEDURE [dbo].[spRegInfEmpEmpresa]
 (
 @pIdProceso       numeric(9),
 @pIdTarea         numeric(9),
-@pCveUsuario      varchar(10),
+@pCodigoUsuario   varchar(10),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),
 @pCveTipoNomina   varchar(2),
 @pAnoPeriodo      varchar(6),
 @pIdEmpleado      int,
+@pZona            int,
+@pCveTipoEmpleado varchar(2),
+@pCveTipoPercep   varchar(2),
+@pFIngreso        date,
+@pSueldoMensual   numeric(16,2),
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
+
 )
 AS
 BEGIN
   DECLARE  @dias_incap  int = 0,
-           @dias_falta  int = 0
+           @dias_falta  int = 0,
+		   @dias_vaca   int = 0
 
   DECLARE  @k_error     varchar(1) = 'E'
 
@@ -59,9 +66,22 @@ BEGIN
 					  @pError OUT,
                       @pMsgError OUT
 
+  EXEC spCalDiasVaca  @pIdProceso,
+                      @pIdTarea,
+                      @pIdCliente,
+                      @pCveEmpresa,
+	                  @pCveAplicacion,
+					  @pCveTipoNomina,
+					  @pAnoPeriodo,
+		              @pIdEmpleado,
+					  @dias_vaca  OUT,
+					  @pError OUT,
+                      @pMsgError OUT
+
   BEGIN TRY
 
-  UPDATE  NO_INF_EMP_PER  SET NUM_FALTAS = @dias_falta, NUM_INCAPACIDAD = @dias_incap WHERE
+  UPDATE  NO_INF_EMP_PER  SET NUM_FALTAS = @dias_falta, NUM_INCAPACIDAD = @dias_incap,
+                              DIAS_PRIMA_VAC = @dias_vaca WHERE
   ANO_PERIODO     =  @pAnoPeriodo   AND
   ID_CLIENTE      =  @pIdCliente    AND
   CVE_EMPRESA     = @pCveEmpresa    AND
@@ -76,7 +96,15 @@ BEGIN
   ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
   SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
   EXECUTE spCreaTareaEvento 
-  @pIdCliente, @pCveEmpresa, @pCveAplicacion, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+  @pIdProceso,
+  @pIdTarea,
+  @pCodigoUsuario,
+  @pIdCliente,
+  @pCveEmpresa,
+  @pCveAplicacion,
+  @k_error,
+  @pError,
+  @pMsgError
 
  END CATCH
 

@@ -17,7 +17,7 @@ CREATE PROCEDURE [dbo].[spInsPreNomina]
 (
 @pIdProceso      int,
 @pIdTarea        int,
-@pCveUsuario     varchar(10),
+@pCodigoUsuario  varchar(20),
 @pIdCliente      int,
 @pCveEmpresa     varchar(4),
 @pCveAplicacion  varchar(10),
@@ -66,6 +66,11 @@ BEGIN
   @pTxtNota,
   @pReferencia)
 
+  UPDATE  FC_GEN_TAREA  SET  NUM_REGISTROS =  NUM_REGISTROS + 1  WHERE 
+          CVE_EMPRESA  =  @pCveEmpresa  AND
+		  ID_PROCESO   =  @pIdProceso   AND
+		  ID_TAREA     =  @pIdTarea  
+
   END TRY  
 
   BEGIN CATCH
@@ -73,7 +78,15 @@ BEGIN
 	ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento
-	@pIdCliente, @pCveEmpresa, @pCveAplicacion, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_error,
+    @pError,
+    @pMsgError
   END CATCH
 
 

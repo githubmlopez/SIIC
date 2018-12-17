@@ -17,7 +17,7 @@ CREATE PROCEDURE [dbo].[spCalCuotObrPat]
 (
 @pIdProceso       int,
 @pIdTarea         int,
-@pCveUsuario      varchar(10),
+@pCodigoUsuario   varchar(20),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),
@@ -146,7 +146,16 @@ BEGIN
 	ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento
-	@pIdCliente, @pCveEmpresa, @pCveAplicacion, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
+	  @pIdProceso,
+      @pIdTarea,
+      @pCodigoUsuario,
+      @pIdCliente,
+      @pCveEmpresa,
+      @pCveAplicacion,
+      @k_warning,
+      @pError,
+      @pMsgError
+
   END
   ELSE
   BEGIN 
@@ -193,7 +202,16 @@ BEGIN
       SET  @pError    =  'Error Insert Det. IMSS ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
       SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
       EXECUTE spCreaTareaEvento
-	  @pIdCliente, @pCveEmpresa, @pCveAplicacion, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+	  @pIdProceso,
+      @pIdTarea,
+      @pCodigoUsuario,
+      @pIdCliente,
+      @pCveEmpresa,
+      @pCveAplicacion,
+      @k_error,
+      @pError,
+      @pMsgError
+
     END CATCH
   END
 END

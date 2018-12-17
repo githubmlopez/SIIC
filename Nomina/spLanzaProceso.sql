@@ -1,4 +1,4 @@
-USE [ADMON01]
+USE [ADNOMINA01]
 GO
 
 SET ANSI_NULLS ON
@@ -7,14 +7,29 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
-
--- DROP PROCEDURE spLanzaTranProceso
-ALTER PROCEDURE spLanzaProceso @pIdProceso numeric(9), @pCveEmpresa varchar(4), @pCveUsuario varchar(8),
-                               @pAnoMes  varchar(6), @pStoreProc varchar(50)
+IF  EXISTS( SELECT 1 FROM ADNOMINA01.sys.procedures WHERE Name =  'spLanzaProceso')
+BEGIN
+  DROP  PROCEDURE spLanzaProceso
+END
+GO
+-- EXEC spLanzaProceso 'MON1',1,1,'CU','NOMINA','MARIO','201803','S','spGenProcNomina'
+CREATE PROCEDURE spLanzaProceso
+(
+@pCveMonitor    varchar(10),
+@pIdProceso     numeric(9,0),
+@pIdCliente     int,
+@pCveEmpresa    varchar(4),
+@pCveAplicacion varchar(10),
+@pCodigoUsuario varchar(10),
+@pAnoPeriodo    varchar(6),
+@pCveTipoNomina varchar(2),
+@pStoreProc     varchar(50)
+)
 AS
 BEGIN
-
+--  SELECT 'ENTRO A LANZA PROCESO'
   DECLARE  @k_error      varchar(1) = 'E',
+           @k_warning    varchar(1) = 'W',
            @k_abierto    varchar(1) = 'A'
 
   DECLARE  @error        varchar(80),
@@ -28,42 +43,66 @@ BEGIN
   SET      @msg_error  =  ' '
   SET      @id_tarea   =  0
 
-  EXEC  spCreaTarea  @pIdProceso, @pCveEmpresa, @pCveUsuario, @pAnoMes, @id_tarea OUT, 
-                     @error OUT, @msg_error OUT 
+  EXEC  spCreaTarea
+  @pIdProceso,
+  @pCodigoUsuario,
+  @pIdCliente,
+  @pCveEmpresa,
+  @pCveAplicacion,
+  @pAnoPeriodo,
+  @id_tarea OUT,
+  @error OUT,
+  @msg_error OUT 
 
   SET @sit_periodo  = ' '
 
-  IF EXISTS (SELECT SIT_PERIODO FROM CI_PERIODO_CONTA  WHERE 
-                                     CVE_EMPRESA    =  @pCveEmpresa    AND
-                                     ANO_MES        =  @pAnoMes)
+  IF EXISTS (SELECT 1 FROM NO_PERIODO  WHERE 
+                           ID_CLIENTE      =  @pIdCliente     AND
+					       CVE_EMPRESA     =  @pCveEmpresa    AND
+						   CVE_TIPO_NOMINA =  @pCveTipoNomina AND
+						   ANO_PERIODO     =  @pAnoPeriodo)
   BEGIN
-    SELECT @sit_periodo = SIT_PERIODO FROM CI_PERIODO_CONTA  WHERE 
-                                           CVE_EMPRESA    =  @pCveEmpresa    AND
-                                           ANO_MES        =  @pAnoMes
+    SELECT @sit_periodo = SIT_PERIODO FROM NO_PERIODO  WHERE 
+                                           ID_CLIENTE      =  @pIdCliente     AND
+				                 	       CVE_EMPRESA     =  @pCveEmpresa    AND
+						                   CVE_TIPO_NOMINA =  @pCveTipoNomina AND
+						                   ANO_PERIODO     =  @pAnoPeriodo
   END
 
-  IF  @sit_periodo  =  @k_abierto  AND
-      EXISTS (SELECT 1 FROM CI_PERIODO_ISR  WHERE  CVE_EMPRESA    =  @pCveEmpresa    AND
-                                                   ANO_MES        =  @pAnoMes)  
+  IF  @sit_periodo  =  @k_abierto   
   BEGIN
 
     SET @sql = N'EXEC ' + @pStoreProc +  
-    N' @CveEmpresa_p,@CveUsuario_p,@AnoMes_p, @IdProceso_p, @id_tarea_p, @error_p OUTPUT, @msg_error_p OUTPUT'    
+    N' @IdProceso_p, @IdTarea_p, @CodigoUsuario_p, @IdCliente_p,' +
+    N'@CveEmpresa_p, @CveAplicacion_p, @CveTipoNomina_p, @AnoPeriodo_p,' +
+	N'@error_p OUTPUT, @msg_error_p OUTPUT'    
     SET @parametros =
-    N'@CveEmpresa_p varchar(4),@CveUsuario_p varchar(8),@AnoMes_p varchar(6), @IdProceso_p numeric(9), @id_tarea_p numeric(9), @error_p varchar(80) OUT, @msg_error_p varchar(400) OUT'
+    N' @IdProceso_p numeric(9,0), @IdTarea_p numeric(9,0), @CodigoUsuario_p varchar(20), @IdCliente_p int,' +
+    N'@CveEmpresa_p varchar(4), @CveAplicacion_p varchar(10), @CveTipoNomina_p varchar(2),' +
+	N'@AnoPeriodo_p varchar(6), @error_p varchar(80) OUT, @msg_error_p varchar(400) OUT'
  
---    SELECT ' sql==> ' + @sql
+--  SELECT ' sql==> ' + @sql
+--	SELECT ' par==> ' + @parametros
 
     EXEC sp_executesql @sql, @parametros,
-    @CveEmpresa_p  = @pCveEmpresa,
-    @CveUsuario_p  = @pCveUsuario,
-    @AnoMes_p      = @pAnoMes,
-    @IdProceso_p   = @pIdProceso,
-    @id_tarea_p    = @id_tarea,
-    @error_p       = @error OUTPUT, 
-    @msg_error_p   = @msg_error OUTPUT;
+    @IdProceso_p      = @pIdProceso,
+	@IdTarea_p        = @id_tarea,
+	@CodigoUsuario_p  = @pCodigoUsuario,
+	@IdCliente_p      = @pIdCliente,
+    @CveEmpresa_p     = @pCveEmpresa,
+    @CveAplicacion_p  = @pCveAplicacion,
+	@CveTipoNomina_p  = @pCveTipoNomina,
+    @AnoPeriodo_p     = @pAnoPeriodo,
+    @error_p          = @error OUTPUT, 
+    @msg_error_p      = @msg_error OUTPUT;
 
-    EXEC  spActPctTarea @id_tarea, 100
+    EXEC  spActPctTarea 
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @pIdProceso,
+    @id_tarea, 
+    100
 
     UPDATE FC_GEN_TAREA  SET HORA_FINAL =  CONVERT(varchar(10), GETDATE(), 108)  WHERE
            ID_PROCESO  =  @pIdProceso  AND  ID_TAREA  = @id_tarea
@@ -73,9 +112,18 @@ BEGIN
   END
   ELSE
   BEGIN
-    SET  @error    =  'Periodo Contable no existe, cerrado o no existe periodo ISR'
+    SET  @error    =  'Periodo no existe, cerrado o no existe periodo ISR'
     SET  @msg_error =  LTRIM(@error + '==> ' + isnull(ERROR_MESSAGE(), ' '))
-    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @id_tarea, @k_error, @error, @msg_error
+    EXECUTE spCreaTareaEvento 
+    @pIdProceso,
+    @id_tarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_warning,
+    @error,
+    @msg_error
   END
 END
 

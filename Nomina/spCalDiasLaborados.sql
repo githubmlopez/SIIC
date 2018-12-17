@@ -16,6 +16,7 @@ CREATE PROCEDURE [dbo].[spCalDiasLaborados]
 (
 @pIdProceso       int,
 @pIdTarea         int,
+@pCodigoUsuario   varchar(20),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),
@@ -48,6 +49,7 @@ BEGIN
     
   EXEC spCalNumIncap  @pIdProceso,
                       @pIdTarea,
+					  @pCodigoUsuario,
                       @pIdCliente,
                       @pCveEmpresa,
 	                  @pCveAplicacion,
@@ -60,6 +62,7 @@ BEGIN
 
   EXEC spCalNumFaltas @pIdProceso,
                       @pIdTarea,
+					  @pCodigoUsuario,
 	                  @pIdCliente,
                       @pCveEmpresa,
 	                  @pCveAplicacion,

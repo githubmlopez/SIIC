@@ -5,16 +5,33 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE PROCEDURE [dbo].[spRegDeducPer] (@pIdProceso       numeric(9),
-										@pIdTarea         numeric(9),
-										@pCveUsuario      varchar(8),
-										@pIdCliente       int,
-                                        @pCveEmpresa      varchar(4),
-								        @pCveTipoNomina   varchar(2),
-									    @pAnoPeriodo      varchar(6),
-										@pIdEmpleado      int,
-										@pError           varchar(80) OUT,
-										@pMsgError        varchar(400) OUT)
+SET NOCOUNT ON
+GO
+IF  EXISTS( SELECT 1 FROM ADNOMINA01.sys.procedures WHERE Name =  'spRegDeducPer')
+BEGIN
+  DROP  PROCEDURE spRegDeducPer
+END
+GO
+--EXEC spRegDeducPer 1,1,'MARIO',1,'CU','NOMINA','S','201803',1,10000,' ',' '
+CREATE PROCEDURE [dbo].[spRegDeducPer] 
+(
+@pIdProceso       numeric(9),
+@pIdTarea         numeric(9),
+@pCodigoUsuario   varchar(20),
+@pIdCliente       int,
+@pCveEmpresa      varchar(4),
+@pCveAplicacion   varchar(10),
+@pCveTipoNomina   varchar(2),
+@pAnoPeriodo      varchar(6),
+@pIdEmpleado      int,
+@pZona            int,
+@pCveTipoEmpleado varchar(2),
+@pCveTipoPercep   varchar(2),
+@pFIngreso        date,
+@pSueldoMensual   numeric(16,2),
+@pError           varchar(80) OUT,
+@pMsgError        varchar(400) OUT
+)
 AS
 BEGIN
   DECLARE  @cve_concepto      varchar(4)  =  ' ',
@@ -24,8 +41,21 @@ BEGIN
   DECLARE  @k_verdadero       bit         =  1,
 		   @k_falso           bit         =  0
 
-  DECLARE  @NunRegistros      int, 
+  DECLARE  @NumRegistros      int, 
            @RowCount          int
+
+  DELETE FROM NO_PRE_NOMINA WHERE 
+  ANO_PERIODO  =  @pAnoPeriodo  AND
+  ID_CLIENTE   =  @pIdCliente   AND
+  CVE_EMPRESA  =  @pCveEmpresa  AND
+  ID_EMPLEADO  =  @pIdEmpleado  AND
+  CVE_CONCEPTO IN 
+  (SELECT  CVE_CONCEPTO
+   FROM    NO_PER_DESC_PER pp
+   WHERE
+   pp.ID_CLIENTE       = @pIdCliente  AND
+   pp.CVE_EMPRESA      = @pCveEmpresa AND
+   pp.ID_EMPLEADO      = @pIdEmpleado)
 
 -------------------------------------------------------------------------------
 -- Calculo de deducciones fijas por periodo indefinido
@@ -47,28 +77,36 @@ BEGIN
   p.CVE_TIPO_NOMINA  = @pCveTipoNomina  AND
   p.ID_EMPLEADO      = @pIdEmpleado     AND
   B_PER_DEFINIDO     = @k_falso         AND
-  ANO_PER_INI       >= @pAnoPeriodo
-
-  SET @NunRegistros = @@ROWCOUNT
+  ANO_PER_INI        >= @pAnoPeriodo
+  SET @NumRegistros = @@ROWCOUNT
 ------------------------------------------------------------------------------------------------------
   SET @RowCount     = 1
 
-  WHILE @RowCount <= @NunRegistros
+  WHILE @RowCount <= @NumRegistros
   BEGIN
     SELECT @cve_concepto = CVE_CONCEPTO, @imp_concepto = IMP_CONCEPTO
 	FROM   @TDeduccion  WHERE  RowID = @RowCount
 
-	EXEC spInsPreNomina  @pAnoPeriodo,
-                         @pIdCliente,
-                         @pCveEmpresa,
-                         @pCveTipoNomina,
-                         @pIdEmpleado,
-                         @cve_concepto,
-                         @imp_concepto,
-						 0,
-                         0,
-                         @gpo_transaccion,
-                         ' '
+	EXEC spInsPreNomina  
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @pCveTipoNomina,
+    @pAnoPeriodo,
+    @pIdEmpleado,
+    @cve_concepto,
+    @imp_concepto,
+    0,
+    0,
+    0,
+    ' ',
+    ' ',
+    @pError OUT,
+    @pMsgError OUT
+
     SET @RowCount     = @RowCount + 1
 
   END
@@ -79,11 +117,13 @@ BEGIN
 -----------------------------------------------------------------------------------------------------
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
 -----------------------------------------------------------------------------------------------------
+  DECLARE  @TDeduccion2      TABLE
+          (RowID             int  identity(1,1),
+		   CVE_CONCEPTO      varchar(2),
+		   IMP_CONCEPTO      numeric(16,2))
 
-  DELETE @TDeduccion
- 
-  INSERT  @TDeduccion(CVE_CONCEPTO, IMP_CONCEPTO) 
-  SELECT  p.CVE_CONCEPTO, p.IMP_CONCEPTO
+  INSERT  @TDeduccion2(CVE_CONCEPTO, IMP_CONCEPTO) 
+  SELECT  p.CVE_CONCEPTO, a.IMP_CAPITAL + a.IMP_INTERES
   FROM    NO_PER_DESC_PER p, NO_AMORT_INICIO a
   WHERE
   p.ID_CLIENTE       = @pIdCliente        AND
@@ -97,27 +137,34 @@ BEGIN
   p.CVE_TIPO_NOMINA  = a.CVE_TIPO_NOMINA  AND
   p.ID_EMPLEADO      = a.ID_EMPLEADO      AND
   a.ANO_PERIODO      = @pAnoPeriodo
-
-  SET @NunRegistros = @@ROWCOUNT
+  SET @NumRegistros = @@ROWCOUNT
 ------------------------------------------------------------------------------------------------------
+
   SET @RowCount     = 1
 
-  WHILE @RowCount <= @NunRegistros
+  WHILE @RowCount <= @NumRegistros
   BEGIN
     SELECT @cve_concepto = CVE_CONCEPTO, @imp_concepto = IMP_CONCEPTO
-	FROM   @TDeduccion  WHERE  RowID = @RowCount
-
-	EXEC spInsPreNomina  @pAnoPeriodo,
-                         @pIdCliente,
-                         @pCveEmpresa,
-                         @pCveTipoNomina,
-                         @pIdEmpleado,
-                         @cve_concepto,
-                         @imp_concepto,
-						 0,
-                         0,
-                         @gpo_transaccion,
-                         ' '  
+	FROM   @TDeduccion2  WHERE  RowID = @RowCount
+	EXEC spInsPreNomina  
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @pCveTipoNomina,
+    @pAnoPeriodo,
+    @pIdEmpleado,
+    @cve_concepto,
+    @imp_concepto,
+    0,
+    0,
+    0,
+    ' ',
+    ' ',
+    @pError OUT,
+    @pMsgError OUT
 
     SET @RowCount     = @RowCount + 1
 

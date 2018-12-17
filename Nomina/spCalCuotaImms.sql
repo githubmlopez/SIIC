@@ -15,7 +15,7 @@ CREATE PROCEDURE [dbo].[spCalCuotaImms]
 (										 
 @pIdProceso       int,
 @pIdTarea         int,
-@pCveUsuario      varchar(10),
+@pCodigoUsuario   varchar(10),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),
@@ -64,7 +64,7 @@ BEGIN
 	EXEC spCalCuotObrPat        
     @pIdProceso,
     @pIdTarea,
-	@pCveUsuario,
+	@pCodigoUsuario,
     @pIdCliente,
     @pCveEmpresa,
     @pCveAplicacion,

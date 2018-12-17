@@ -17,7 +17,7 @@ CREATE PROCEDURE [dbo].[spCalculaSBC]
 (
 @pIdProceso       int,
 @pIdTarea         int,
-@pCveUsuario      varchar(10),
+@pCodigoUsuario   varchar(10),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),
@@ -25,9 +25,11 @@ CREATE PROCEDURE [dbo].[spCalculaSBC]
 @pAnoPeriodo      varchar(6),
 @pIdEmpleado      int,
 @pSdoEmpleado     numeric(16,2),
+@pCveTipoPercep   varchar(2),
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
+
 AS
 BEGIN
   DECLARE  @imp_sbc           numeric(16,2)  = 0,
@@ -46,7 +48,8 @@ BEGIN
            @incap_bim_ant     int            = 0,
 		   @faltas_bim_ant    int            = 0
 
-  DECLARE  @k_error           varchar(1)     = 'E'
+  DECLARE  @k_error           varchar(1)     = 'E',
+           @k_perc_mixto      varchar(2)     = 'MX'
 
   DELETE  FROM  NO_DET_CONC_OB_PAT  WHERE
   ANO_PERIODO  =  @pAnoPeriodo  AND
@@ -63,6 +66,7 @@ BEGIN
   EXEC spCalcFactNomina         
   @pIdProceso,
   @pIdTarea,
+  @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
   @pCveAplicacion,
@@ -75,22 +79,34 @@ BEGIN
   @pError OUT,
   @pMsgError OUT
 
-  EXEC spCalcInfBimAnt     
-  @pIdProceso,
-  @pIdTarea,
-  @pIdCliente,
-  @pCveEmpresa,
-  @pCveAplicacion,
-  @pCveTipoNomina,
-  @pAnoPeriodo,
-  @pIdEmpleado,
-  @sal_bim_ant OUT,
-  @sdo_dia_bim_ant OUT,
-  @dias_bim_ant OUT,
-  @incap_bim_ant OUT,
-  @faltas_bim_ant OUT,
-  @pError OUT,
-  @pMsgError OUT
+  IF @pCveTipoPercep  =  @k_perc_mixto
+  BEGIN 
+    EXEC spCalcInfBimAnt     
+    @pIdProceso,
+    @pIdTarea,
+	@pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @pCveTipoNomina,
+    @pAnoPeriodo,
+    @pIdEmpleado,
+    @sal_bim_ant OUT,
+    @sdo_dia_bim_ant OUT,
+    @dias_bim_ant OUT,
+    @incap_bim_ant OUT,
+    @faltas_bim_ant OUT,
+    @pError OUT,
+    @pMsgError OUT
+  END
+  ELSE
+  BEGIN
+    SET @sal_bim_ant     = 0
+    SET @sdo_dia_bim_ant = 0
+    SET @dias_bim_ant    = 0
+    SET @incap_bim_ant   = 0
+    SET @faltas_bim_ant  = 0
+  END
 
   --SELECT '1*' + CONVERT(VARCHAR(18),@sal_bim_ant)
   --SELECT '2*' + CONVERT(VARCHAR(18),@sdo_dia_bim_ant)
@@ -155,13 +171,21 @@ BEGIN
     SET  @pError    =  'Error Insert SBC. IMSS ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento
-	@pIdCliente, @pCveEmpresa, @pCveAplicacion, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+	@pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_error,
+    @pError,
+    @pMsgError
   END CATCH
 
   EXEC spCalCuotaImms
   @pIdProceso,
   @pIdTarea,
-  @pCveUsuario,
+  @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
   @pCveAplicacion,
