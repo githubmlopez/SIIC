@@ -1,7 +1,7 @@
 USE DICCIONARIO
 GO
 
---EXEC spCreaProcValida 'ADMON01'
+--EXEC spCreaProcValida 'ADNOMINA01'
 
 ALTER PROCEDURE  [dbo].[spCreaProcValida] @pBaseDatos varchar(10)
 AS

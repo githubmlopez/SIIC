@@ -1,6 +1,3 @@
-USE [ADMON01]
-GO
-
 /****** Object:  UserDefinedTableType [dbo].[CCINGIDENTIF]    Script Date: 26/11/2018 01:44:26 p. m. ******/
 
 USE [DICCIONARIO]
@@ -42,7 +39,7 @@ BEGIN
           @k_bit        varchar(3)  = 'bit'
 
   DECLARE @nom_tabla     varchar(30),
-          @datatype      varchar(20),
+          @datatype      varchar(30),
           @cadena_script varchar(500),
 		  @num_campos    int,
 		  @cont_campos   int
@@ -136,26 +133,26 @@ BEGIN
          WHEN  @tipo_campo  =  @k_entero
          THEN  @k_entero
          WHEN  @tipo_campo  =  @k_varchar AND @longitud > 0 
-         THEN  @k_varchar + '(' + CONVERT(VARCHAR(3),@longitud) + ')'
+         THEN  @k_varchar + '(' + CONVERT(VARCHAR(4),@longitud) + ')'
 		 WHEN  @tipo_campo  =  @k_nvarchar AND  @longitud > 0
-         THEN  @k_nvarchar + '(' + CONVERT(VARCHAR(3),@longitud) + ')'
+         THEN  @k_nvarchar + '(' + CONVERT(VARCHAR(4),@longitud) + ')'
 		 WHEN  @tipo_campo  =  @k_varchar AND @longitud < 0 
          THEN  @k_varchar + '(' + 'max' + ')'
 		 WHEN  @tipo_campo  =  @k_nvarchar AND  @longitud < 0
          THEN  @k_nvarchar + '(' + 'max' + ')'
          WHEN  @tipo_campo  =  @k_numerico
-         THEN  @k_numerico + '(' + CONVERT(VARCHAR(3), @enteros) + ',' + CONVERT(VARCHAR(2),@decimales) + ')'
+         THEN  @k_numerico + '(' + CONVERT(VARCHAR(4), @enteros) + ',' + CONVERT(VARCHAR(2),@decimales) + ')'
          WHEN  @tipo_campo  =  @k_decimal
-         THEN  @k_decimal + '(' + CONVERT(VARCHAR(3), @enteros) + ',' + CONVERT(VARCHAR(2),@decimales) + ')'
+         THEN  @k_decimal + '(' + CONVERT(VARCHAR(4), @enteros) + ',' + CONVERT(VARCHAR(2),@decimales) + ')'
 
          WHEN  @tipo_campo  =  @k_bit
          THEN  @k_bit
          ELSE  'ERROR'
        END  
 
-       IF @b_nulo  =  @k_verdadero
+       IF @b_nulo  =  @k_falso
 	   BEGIN
-         SET  @datatype  =  @datatype + ' NULL'
+         SET  @datatype  =  @datatype + ' NOT NULL'
 	   END
 
        IF  @cont_campos  <>  @num_campos

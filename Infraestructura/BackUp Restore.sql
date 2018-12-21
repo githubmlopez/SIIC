@@ -7,7 +7,7 @@ GO
 --USE master
 --ALTER DATABASE ADMON01 SET OFFLINE WITH ROLLBACK IMMEDIATE
 --GO
---EXECUTE spRestore 'ADMON0120181205.BAK'
+--EXECUTE spRestore 'ADMON0120181219.BAK'
 ALTER PROCEDURE spRestore @pNombre nvarchar(50) 
 AS
 BEGIN
@@ -22,7 +22,7 @@ BEGIN
   SERVERPROPERTY('ProductVersion') AS [ProductVersion], 
   Left(@@Version, Charindex('-', @@version) - 2) As VersionName    
 
-  SET @path  = LTRIM(N'C:\TEMP2018\' + @pNombre)
+  SET @path  = LTRIM(N'C:\RESPALDOSMLP\' + @pNombre)
 
   SELECT @path
 
