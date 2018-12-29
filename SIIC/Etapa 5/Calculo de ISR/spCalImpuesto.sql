@@ -8,7 +8,7 @@ GO
 SET NOCOUNT ON
 GO
 --DECLARE @pError varchar(80) , @pMsgError varchar(400) 
---exec spCalImpuesto 'CU','MARIO', '201805', 0, 0, ' ', ' '
+--exec spCalImpuesto 'CU','MARIO', '201812', 0, 0, ' ', ' '
 
 ALTER PROCEDURE [dbo].[spCalImpuesto]  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                        @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
@@ -83,8 +83,9 @@ declare  @k_diciembre       int         =  12,
   SET  @imp_ing_grabados  =  @imp_ingresos  +   @imp_vta_activos  +  @imp_otro_gtos_iva 
 
 
-  SET  @imp_ing_mes_ant  =  ISNULL((SELECT IMP_ING_TOTALES
-                            FROM CI_PERIODO_ISR  WHERE CVE_EMPRESA  =  @pCveEmpresa  AND  ANO_MES =  @ano_mes_ant),0)
+  SET  @imp_ing_mes_ant  =  ISNULL((SELECT SUM(IMP_PAG_PROV_PER) 
+                            FROM CI_PERIODO_ISR  WHERE CVE_EMPRESA  =  @pCveEmpresa  AND  ANO_MES <=  @ano_mes_ant
+							AND IMP_PAG_PROV_PER > 0),0)
 
   SET  @imp_ing_nominales  =  @imp_ing_grabados  -  @imp_cancelado + @imp_int_bancario + @imp_otr_produc - @imp_exentos 
 

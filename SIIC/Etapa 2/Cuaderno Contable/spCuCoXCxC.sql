@@ -51,7 +51,9 @@ BEGIN
             f.ID_VENTA            = v.ID_VENTA          AND    
             v.ID_CLIENTE          = c.ID_CLIENTE        AND  
 		    f.SERIE              <> @k_legada           AND   
-	        f.SIT_TRANSACCION     = @k_activa  
+	        f.SIT_TRANSACCION     = @k_activa           AND  
+			dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) <=
+		    @pAnoMes 
   
       SET @imp_tot_cxc =
 	  ISNULL((SELECT SUM(IMP_F_NETO)  FROM  CI_CUCO_C_X_C WHERE ANO_MES = @pAnoMes AND CVE_F_MONEDA = @k_peso),0)

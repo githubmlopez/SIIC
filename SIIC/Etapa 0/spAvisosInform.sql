@@ -53,7 +53,9 @@ BEGIN
 		   @mes               int,
 		   @ano_mes_ant       varchar(6),
 		   @num_reg_proc      int = 0,
-		   @id_recibo         int
+		   @id_recibo         int,
+           @mes_calc          int = 0,
+           @f_revision date
 
 -- 0 - Una Factura que no tiene pagos relacionados
 -- 1 - Una Factura que tiene un solo movimiento de pago relacionado
@@ -252,6 +254,16 @@ BEGIN
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
 	END
 
+	IF  NOT EXISTS(SELECT 1 FROM CI_TIPO_CAMBIO WHERE F_OPERACION = @f_operacion)  
+	BEGIN
+--      SELECT '7.1'
+	  SET @num_reg_proc = @num_reg_proc + 1  
+	  SET  @pError    =  'NO existe T.C. CXC' + convert(varchar(12), @f_operacion, 121)    
+      SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+	END
+
+
     SET @RowCount     =   @RowCount + 1
   END  			
 
@@ -263,6 +275,7 @@ BEGIN
   DECLARE  @TCtasxPagar     TABLE
           (RowID            int  identity(1,1),
 		   ID_CXP           int,
+		   F_CAPTURA        date,
 		   IMP_BRUTO        numeric(16,2),
 		   IMP_IVA          numeric(16,2),
 		   IMP_NETO         numeric(16,2),
@@ -275,8 +288,8 @@ BEGIN
 -----------------------------------------------------------------------------------------------------
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
 -----------------------------------------------------------------------------------------------------
-  INSERT  @TCtasxPagar(ID_CXP, IMP_BRUTO, IMP_IVA, IMP_NETO, CVE_MONEDA, CVE_CHEQUERA, ID_CONCILIA_CXP, SIT_CONCILIA_CXP) 
-  SELECT  ID_CXP, IMP_BRUTO, IMP_IVA, IMP_NETO, CVE_MONEDA, CVE_CHEQUERA, ID_CONCILIA_CXP, SIT_CONCILIA_CXP
+  INSERT  @TCtasxPagar(ID_CXP, F_CAPTURA, IMP_BRUTO, IMP_IVA, IMP_NETO, CVE_MONEDA, CVE_CHEQUERA, ID_CONCILIA_CXP, SIT_CONCILIA_CXP) 
+  SELECT  ID_CXP, F_CAPTURA, IMP_BRUTO, IMP_IVA, IMP_NETO, CVE_MONEDA, CVE_CHEQUERA, ID_CONCILIA_CXP, SIT_CONCILIA_CXP
   FROM CI_CUENTA_X_PAGAR WHERE CVE_EMPRESA  =  @pCveEmpresa  AND SIT_C_X_P = @k_activa AND
                   dbo.fnArmaAnoMes (YEAR(F_CAPTURA), MONTH(F_CAPTURA))  =  @pAnoMes
   SET @NunRegistros = @@ROWCOUNT
@@ -286,7 +299,7 @@ BEGIN
 				  
   WHILE @RowCount <= @NunRegistros
   BEGIN
-    SELECT @id_cxp = ID_CXP, @imp_bruto = IMP_BRUTO, @imp_iva = IMP_IVA, @imp_neto = IMP_NETO, @cve_moneda = CVE_MONEDA, 
+    SELECT @id_cxp = ID_CXP, @f_operacion = F_CAPTURA, @imp_bruto = IMP_BRUTO, @imp_iva = IMP_IVA, @imp_neto = IMP_NETO, @cve_moneda = CVE_MONEDA, 
 	       @cve_chequera = CVE_CHEQUERA, @id_concilia_cxp = ID_CONCILIA_CXP, @sit_concilia_cxp = SIT_CONCILIA_CXP
 	FROM   @TCtasxPagar  WHERE  RowID = @RowCount
     
@@ -350,6 +363,16 @@ BEGIN
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
   END
+
+  IF  NOT EXISTS(SELECT 1 FROM CI_TIPO_CAMBIO WHERE F_OPERACION = @f_operacion)  
+  BEGIN
+--     SELECT '11.1'
+	SET @num_reg_proc = @num_reg_proc + 1  
+	SET  @pError    =  'NO existe T.C. CXP ' + convert(varchar(12), @f_operacion, 121)    
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+  END
+
 -------------------------------------------------------------------------------
 -- Verificación de Movimientos Bancarios
 -------------------------------------------------------------------------------
@@ -451,6 +474,16 @@ BEGIN
       SET @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
 	END
+
+    IF  NOT EXISTS(SELECT 1 FROM CI_TIPO_CAMBIO WHERE F_OPERACION = @f_operacion)  
+    BEGIN
+--     SELECT '15.2'
+	  SET @num_reg_proc = @num_reg_proc + 1  
+	  SET  @pError    =  'NO existe T.C. M. Banc ' + convert(varchar(12), @f_operacion, 121)    
+      SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+    END
+
 
     SET @RowCount     =   @RowCount + 1
 
@@ -648,7 +681,7 @@ BEGIN
 	IF  EXISTS (SELECT 1  FROM CI_CONCILIA_C_X_C WHERE ANOMES_PROCESO = @pAnoMes AND ID_MOVTO_BANCARIO = @id_movto_bancario)
 	BEGIN
 	  SET @num_reg_proc = @num_reg_proc + 1  
-	  SET  @pError    =  'El moto pend. conc. ' + ISNULL(CONVERT(VARCHAR(10), @id_movto_bancario), ' ') + ' fue conciliado'  
+	  SET  @pError    =  'El movto pend. conc. ' + ISNULL(CONVERT(VARCHAR(10), @id_movto_bancario), ' ') + ' fue conciliado'  
       SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
 	END
@@ -713,6 +746,29 @@ BEGIN
 
     SET @RowCount     = @RowCount + 1
   END
+
+-----------------------------------------------------------------------------------------------------
+-- Verifica si faltan registros de tipo de cambio del mes 
+-----------------------------------------------------------------------------------------------------
+
+  SET  @f_revision = SUBSTRING(@pAnoMes,1,4) + '-' + SUBSTRING(@pAnoMes,5,6) + '-' + '01' 
+  SET @mes         = CONVERT(INT, SUBSTRING(@pAnoMes,5,6))
+  SET @mes_calc    = CONVERT(INT, SUBSTRING(@pAnoMes,5,6))
+
+  WHILE  @mes = @mes_calc
+  BEGIN
+    IF  NOT EXISTS(SELECT 1 FROM CI_TIPO_CAMBIO WHERE F_OPERACION = @f_revision)
+    BEGIN
+      SET @num_reg_proc = @num_reg_proc + 1  
+	  SET  @pError    =  'No existe tipo cambio ' + CONVERT(VARCHAR(10), @f_revision, 101)   
+      SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+    END
+    SET @f_revision =  DATEADD(DAY, 1, @f_revision)
+    SET @mes_calc = MONTH(@f_revision)
+  END
+
+----------------------------------------------------------------------------------------------
 
   EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @num_reg_proc 
 END

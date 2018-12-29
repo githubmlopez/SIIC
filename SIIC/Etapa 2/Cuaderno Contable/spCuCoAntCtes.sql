@@ -33,7 +33,9 @@ BEGIN
     WHERE m.SIT_CONCILIA_BANCO  = @k_no_concilida     AND
 	      m.SIT_MOVTO           = @k_activa           AND
 		  m.CVE_CHEQUERA        = ch.CVE_CHEQUERA     AND
-		  m.CVE_TIPO_MOVTO      = @k_cxc
+		  m.CVE_TIPO_MOVTO      = @k_cxc              AND
+		  dbo.fnArmaAnoMes (YEAR(m.F_OPERACION), MONTH(m.F_OPERACION)) <=
+		  @pAnoMes             
     SELECT @num_reg_proc = @@ROWCOUNT	
 
     EXEC  spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @num_reg_proc

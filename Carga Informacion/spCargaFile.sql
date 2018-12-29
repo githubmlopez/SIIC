@@ -1,4 +1,4 @@
-USE CARGAINF
+USE CARGADOR
 GO
 SET ANSI_NULLS ON
 GO
@@ -6,12 +6,12 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
-IF  EXISTS( SELECT 1 FROM CARGAINF.sys.procedures WHERE Name =  'spCargaFile')
+IF  EXISTS( SELECT 1 FROM CARGADOR.sys.procedures WHERE Name =  'spCargaFile')
 BEGIN
   DROP  PROCEDURE spCargaFile
 END
 GO
--- exec spCargaFile 1,1,'MARIO', 1, 'CU',1,'201812', ' ', ' '
+-- exec spCargaFile 1,1,'MARIO', 1, 'CU',20,'29122018', ' ', ' '
 CREATE PROCEDURE [dbo].[spCargaFile] 
 (
 @pIdProceso     numeric(9),	
@@ -60,7 +60,9 @@ BEGIN
           @desc_archivo     varchar(100),
           @nom_archivo      varchar(20),
 		  @cve_tipo_periodo varchar(1),
-		  @path             varchar(50)
+		  @path             varchar(50),
+		  @pathcalc         varchar(50),
+		  @b_correcto       bit = 0
 
   DECLARE @row_file         varchar(max) = ' ',
 	      @row_fileo        varchar(max) = ' ',
@@ -68,15 +70,28 @@ BEGIN
           @campo            varchar(max) = ' '
 
   DECLARE @k_csv            varchar(3)  =  'CSV',
-          @k_ascii          varchar(3)  =  'TXT'
+          @k_ascii          varchar(3)  =  'TXT',
+		  @k_verdadero      bit         =  1
 
   DECLARE @sql              varchar(max)
 
-  IF  EXISTS(SELECT 1 FROM FC_FORMATO WHERE
-             ID_CLIENTE  =  @pIdCliente  AND
-			 CVE_EMPRESA =  @pCveEmpresa AND
-			 ID_FORMATO  =  @pIdFormato)
+  EXEC spVerArchCarga 
+  @pIdProceso,	
+  @pIdTarea,
+  @pCodigoUsuario,
+  @pIdCliente,
+  @pCveEmpresa,
+  @pIdFormato,
+  @pPeriodo, 
+  @b_correcto OUT,
+  @pathcalc OUT, 
+  @cve_tipo_archivo OUT,
+  @pError OUT,
+  @pMsgError OUT
+
+  IF  @b_correcto = @k_verdadero
   BEGIN
+    SELECT 'CORRECTO'
     DELETE FROM FC_CARGA_COL_DATO  WHERE
     ID_CLIENTE  =  @pIdCliente  AND
 	CVE_EMPRESA =  @pCveEmpresa AND
@@ -89,31 +104,46 @@ BEGIN
 	ID_FORMATO  =  @pIdFormato  AND
 	PERIODO     =  @pPeriodo  
 
-    SELECT 
-	@cve_tipo_archivo  =  f.CVE_TIPO_ARCHIVO, @desc_archivo = f.DESC_ARCHIVO,
-	@nom_archivo = f.NOM_ARCHIVO, @cve_tipo_periodo = f.CVE_TIPO_PERIODO,
-	@path = f.PATHS
-	FROM FC_FORMATO f WHERE
-    ID_CLIENTE  =  @pIdCliente  AND
-	CVE_EMPRESA =  @pCveEmpresa AND
-	ID_FORMATO  =  @pIdFormato
+ --   SELECT 
+	--@cve_tipo_archivo  =  f.CVE_TIPO_ARCHIVO, @desc_archivo = f.DESC_ARCHIVO,
+	--@nom_archivo = f.NOM_ARCHIVO, @cve_tipo_periodo = f.CVE_TIPO_PERIODO,
+	--@path = f.PATHS
+	--FROM FC_FORMATO f WHERE
+ --   ID_CLIENTE  =  @pIdCliente  AND
+	--CVE_EMPRESA =  @pCveEmpresa AND
+	--ID_FORMATO  =  @pIdFormato
     
-    SET @path = LTRIM(@path + @nom_archivo + @pPeriodo) + '.' + @cve_tipo_archivo
+--    SET @path = LTRIM(@path + @nom_archivo + @pPeriodo) + '.' + @cve_tipo_archivo
 
---	SELECT @path
+ 	SELECT @pathcalc
 
     IF  @cve_tipo_archivo  IN (@k_ascii, @k_csv)
 	BEGIN 
       SET  @sql  =  
-     'BULK INSERT #FILEP FROM ' + char(39) + @path + char(39) + ' WITH (DATAFILETYPE =' + char(39) + 'CHAR' + char(39) +
+     'BULK INSERT #FILEP FROM ' + char(39) + @pathcalc + char(39) + ' WITH (DATAFILETYPE =' + char(39) + 'CHAR' + char(39) +
      ',' + 'CODEPAGE = ' + char(39) + 'ACP' + char(39) + ')'
     END
     EXEC (@sql)
 
     INSERT INTO  #FILE (Rowfile)
     SELECT Rowfile FROM #FILEP
+    SET @NunRegistros = @@ROWCOUNT
+-----------------------------------------------------------------------------------------------------
+    SET @RowCount     = 1
+    WHILE @RowCount <= @NunRegistros
+    BEGIN
+      SELECT @row_file = Rowfile
+      FROM   #FILE
+	  WHERE  id_renglon  = @RowCount
+	  IF SUBSTRING(@row_file,LEN(@row_file),LEN(@row_file)) <> ','
+	  BEGIN
+	    UPDATE #FILE SET  Rowfile = @row_file + ','
+		WHERE  id_renglon  = @RowCount
+	  END
+      SET @RowCount      = @RowCount + 1
+    END
 
---    SELECT * FROM #FILE
+    SELECT * FROM #FILE
 
 ------------------------------------------------------------------------------
 -- Procesa Bloques de Cada Formato
@@ -176,7 +206,7 @@ BEGIN
       @num_reng_d_cad  =  NUM_RENG_D_CAD
 	  FROM @TBloque
 	  WHERE  RowID  =  @RowCount
-
+	  SELECT 'spCalIniFinReng'
       EXEC spCalIniFinReng 
       @pIdProceso,	
       @pIdTarea,
@@ -196,9 +226,9 @@ BEGIN
       @pError OUT,
       @pMsgError OUT
 
-	  --SELECT CONVERT(VARCHAR(10), @res_ini)
-	  --SELECT CONVERT(VARCHAR(10), @res_fin)
-
+	  SELECT CONVERT(VARCHAR(10), @res_ini)
+	  SELECT CONVERT(VARCHAR(10), @res_fin)
+	  SELECT 'spCargaBloqCsv'
 	  EXEC spCargaBloqCsv 
       @pIdProceso,	
       @pIdTarea,
@@ -353,30 +383,6 @@ BEGIN
   END
 END
 
---    BEGIN CATCH
---      SELECT ' ENTRE A CATCH ' 
---	  SELECT CONVERT(VARCHAR(10), @num_reg_proc)
---	  SELECT @rowbalanza
---      IF (SELECT CURSOR_STATUS('global','cur_transaccion'))  =  1 
---      BEGIN
---	    CLOSE balanza_cursor
---        DEALLOCATE balanza_cursor
---      END
-
---      IF object_id('tempdb..#BALANZA') IS NOT NULL 
---      BEGIN
---        DROP TABLE #BALANZA
---      END
-
---      IF object_id('tempdb..#BALANZAP') IS NOT NULL 
---      BEGIN
---        DROP TABLE #BALANZAP
---      END
-
---      IF object_id('tempdb..#BAL_EXTRAC') IS NOT NULL 
---      BEGIN
---        DROP TABLE #BAL_EXTRAC
---      END
 
 --      SET  @pError    =  'Error de Ejecucion Proceso Gen. Balanza COI ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
 --      SET  @pMsgError =  LTRIM(@pError + '==> ' + ERROR_MESSAGE())
@@ -384,4 +390,3 @@ END
 --      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
 --    END CATCH
 
---END
