@@ -11,7 +11,7 @@ BEGIN
   DROP  PROCEDURE spCargaFile
 END
 GO
--- exec spCargaFile 1,1,'MARIO', 1, 'CU',20,'29122018', ' ', ' '
+-- exec spCargaFile 1,1,'MARIO', 1, 'CU',30,'201901', ' ', ' '
 CREATE PROCEDURE [dbo].[spCargaFile] 
 (
 @pIdProceso     numeric(9),	
@@ -57,6 +57,9 @@ BEGIN
 		   @cont_columna      int  =  0 
 
   DECLARE @cve_tipo_archivo varchar(3),
+          @b_separador      bit,
+          @car_separador    varchar(1),
+		  @posicion         int,
           @desc_archivo     varchar(100),
           @nom_archivo      varchar(20),
 		  @cve_tipo_periodo varchar(1),
@@ -86,12 +89,14 @@ BEGIN
   @b_correcto OUT,
   @pathcalc OUT, 
   @cve_tipo_archivo OUT,
+  @b_separador OUT,
+  @car_separador OUT,
   @pError OUT,
   @pMsgError OUT
 
   IF  @b_correcto = @k_verdadero
   BEGIN
-    SELECT 'CORRECTO'
+--    SELECT 'CORRECTO ' +  @car_separador
     DELETE FROM FC_CARGA_COL_DATO  WHERE
     ID_CLIENTE  =  @pIdCliente  AND
 	CVE_EMPRESA =  @pCveEmpresa AND
@@ -104,18 +109,7 @@ BEGIN
 	ID_FORMATO  =  @pIdFormato  AND
 	PERIODO     =  @pPeriodo  
 
- --   SELECT 
-	--@cve_tipo_archivo  =  f.CVE_TIPO_ARCHIVO, @desc_archivo = f.DESC_ARCHIVO,
-	--@nom_archivo = f.NOM_ARCHIVO, @cve_tipo_periodo = f.CVE_TIPO_PERIODO,
-	--@path = f.PATHS
-	--FROM FC_FORMATO f WHERE
- --   ID_CLIENTE  =  @pIdCliente  AND
-	--CVE_EMPRESA =  @pCveEmpresa AND
-	--ID_FORMATO  =  @pIdFormato
-    
---    SET @path = LTRIM(@path + @nom_archivo + @pPeriodo) + '.' + @cve_tipo_archivo
-
- 	SELECT @pathcalc
+--  	SELECT @pathcalc
 
     IF  @cve_tipo_archivo  IN (@k_ascii, @k_csv)
 	BEGIN 
@@ -135,15 +129,16 @@ BEGIN
       SELECT @row_file = Rowfile
       FROM   #FILE
 	  WHERE  id_renglon  = @RowCount
-	  IF SUBSTRING(@row_file,LEN(@row_file),LEN(@row_file)) <> ','
+
+	  IF SUBSTRING(@row_file,LEN(@row_file),LEN(@row_file)) <> @car_separador
 	  BEGIN
-	    UPDATE #FILE SET  Rowfile = @row_file + ','
+	    UPDATE #FILE SET  Rowfile = @row_file + @car_separador
 		WHERE  id_renglon  = @RowCount
 	  END
       SET @RowCount      = @RowCount + 1
     END
 
-    SELECT * FROM #FILE
+--    SELECT * FROM #FILE
 
 ------------------------------------------------------------------------------
 -- Procesa Bloques de Cada Formato
@@ -206,7 +201,7 @@ BEGIN
       @num_reng_d_cad  =  NUM_RENG_D_CAD
 	  FROM @TBloque
 	  WHERE  RowID  =  @RowCount
-	  SELECT 'spCalIniFinReng'
+--	  SELECT 'spCalIniFinReng'
       EXEC spCalIniFinReng 
       @pIdProceso,	
       @pIdTarea,
@@ -226,10 +221,10 @@ BEGIN
       @pError OUT,
       @pMsgError OUT
 
-	  SELECT CONVERT(VARCHAR(10), @res_ini)
-	  SELECT CONVERT(VARCHAR(10), @res_fin)
-	  SELECT 'spCargaBloqCsv'
-	  EXEC spCargaBloqCsv 
+--	  SELECT CONVERT(VARCHAR(10), @res_ini)
+--	  SELECT CONVERT(VARCHAR(10), @res_fin)
+--	  SELECT 'spCargaBloqCsvTxt'
+	  EXEC spCargaBloqCsvTxt 
       @pIdProceso,	
       @pIdTarea,
       @pCodigoUsuario,
@@ -240,7 +235,10 @@ BEGIN
       @num_campos,
       @res_ini,
       @res_fin, 
-      @pPeriodo, 
+      @pPeriodo,
+	  @cve_tipo_archivo, 
+	  @b_separador,
+	  @car_separador,
       @pError OUT,
       @pMsgError OUT
 
@@ -339,24 +337,27 @@ BEGIN
 	      SET  @row_file  =  @row_fileo 
 	    END
 --	  SELECT 'CICLO COL ' + CONVERT(VARCHAR(10), @num_columna )
-      SELECT @tipo_campo = CVE_TIPO_CAMPO  FROM  FC_CARGA_IND  WHERE 
+        SELECT @tipo_campo = CVE_TIPO_CAMPO  FROM  FC_CARGA_IND  WHERE 
 	    ID_CLIENTE  = @pIdCliente  AND
         CVE_EMPRESA = @pCveEmpresa AND
         ID_FORMATO  = @pIdFormato  AND
         SECUENCIA   = @secuencia
-      EXEC spObtCampoCsv
-           @pIdProceso,
-           @pIdTarea,
-           @pCodigoUsuario,
-           @pIdCliente,
-           @pCveEmpresa,
-           @pIdFormato,
-           @row_file,
-           @tipo_campo, 
-           @campo OUT, 
-           @row_fileo OUT,
-           @pError OUT,
-           @pMsgError OUT
+        EXEC spObtCampoSep
+             @pIdProceso,
+             @pIdTarea,
+             @pCodigoUsuario,
+             @pIdCliente,
+             @pCveEmpresa,
+             @pIdFormato,
+             @row_file,
+             @tipo_campo, 
+             @car_separador, 
+             @campo OUT, 
+             @posicion OUT, 
+             @row_fileo OUT,
+             @pError OUT,
+             @pMsgError OUT
+
         SET  @cont_columna  =  @cont_columna + 1
       END
 

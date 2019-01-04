@@ -6,7 +6,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT  ON 
 GO
--- exec spAvisosInform 'CU', 'MLOPEZ', '201809', 1, 144, ' ', ' '
+-- exec spAvisosInform 'CU', 'MLOPEZ', '201811', 1, 144, ' ', ' '
 ALTER PROCEDURE [dbo].[spAvisosInform]  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                          @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								         @pMsgError varchar(400) OUT
@@ -769,6 +769,39 @@ BEGIN
   END
 
 ----------------------------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------------------------------
+-- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
+-----------------------------------------------------------------------------------------------------
+  DECLARE  @TConcilia        TABLE
+          (RowID             int  identity(1,1),
+		   ID_MOVTO_BANCARIO int,
+		   ID_CONCILIA_CXC   int)
+		   
+  INSERT  @TConcilia(ID_MOVTO_BANCARIO, ID_CONCILIA_CXC) 
+  SELECT  ID_MOVTO_BANCARIO, ID_CONCILIA_CXC 
+  FROM    CI_CONCILIA_C_X_C 
+  WHERE   ANOMES_PROCESO  =  @pAnoMes
+  SET @NunRegistros = @@ROWCOUNT
+------------------------------------------------------------------------------------------------------
+  SET @RowCount     = 1
+
+  WHILE @RowCount <= @NunRegistros
+  BEGIN
+    SELECT @id_movto_bancario = ID_MOVTO_BANCARIO, @id_concilia_cxc = ID_CONCILIA_CXC
+	FROM @TConcilia  WHERE  RowID = @RowCount
+
+	IF  (SELECT F_OPERACION FROM CI_MOVTO_BANCARIO WHERE ID_MOVTO_BANCARIO = @id_movto_bancario) <
+        (SELECT F_OPERACION FROM CI_FACTURA WHERE ID_CONCILIA_CXC = @id_concilia_cxc)
+	BEGIN
+	  SET @num_reg_proc = @num_reg_proc + 1  
+	  SET  @pError    =  'Fecha M. Banc < Fact  ' + ISNULL(CONVERT(VARCHAR(10), @id_movto_bancario), ' ')   
+      SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
+	END
+
+    SET @RowCount     = @RowCount + 1
+  END
 
   EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @num_reg_proc 
 END

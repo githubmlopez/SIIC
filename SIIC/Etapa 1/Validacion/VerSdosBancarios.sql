@@ -26,14 +26,22 @@ BEGIN
             @diferencia    numeric(12,2),
 			@num_reg_proc  int = 0
 
-  DECLARE   @k_activa      varchar(1)  =  'A',
-            @k_falso       bit         =  0,
-	  	    @k_verdadero   bit         =  1,
-		    @k_no_concilia varchar(2)  =  'NC',
-            @k_cargo       varchar(1)  =  'C',
-		    @k_abono       varchar(1)  =  'A',
-   		    @k_activo      varchar(1)  =  'A',
-			@k_error       varchar(1)  =  'E'
+  DECLARE   @k_activa      varchar(1)   =  'A',
+            @k_falso       bit          =  0,
+	  	    @k_verdadero   bit          =  1,
+		    @k_no_concilia varchar(2)   =  'NC',
+            @k_cargo       varchar(1)   =  'C',
+		    @k_abono       varchar(1)   =  'A',
+   		    @k_activo      varchar(1)   =  'A',
+			@k_error       varchar(1)   =  'E',
+			@k_no_act      numeric(9,0) = 99999,
+			@k_no_aplica   varchar(2)   = 'NA'
+
+  DECLARE   @NunRegistros  int, 
+            @RowCount      int,
+            @cve_chequera  varchar(6),
+		    @cve_ind_cargo varchar(10),
+			@cve_ind_abono varchar(10)
           
   DECLARE SALBANC CURSOR FOR SELECT  cp.ANO_MES, cp.CVE_CHEQUERA, cp.F_INICIO, cp.F_FIN, cp.SDO_INICIO_MES, cp.SDO_FIN_MES
   FROM  CI_CHEQUERA_PERIODO cp WHERE cp.ANO_MES  =  @pAnoMes
@@ -131,4 +139,51 @@ BEGIN
   CLOSE SALBANC 
   DEALLOCATE SALBANC
   EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @num_reg_proc
+
+-------------------------------------------------------------------------------
+-- Actualización de Indicadores para movimientos Bancarios
+-------------------------------------------------------------------------------
+
+  DECLARE  @TChequera       TABLE
+          (RowID            int  identity(1,1),
+		   CVE_CHEQUERA     varchar(6),
+		   CVE_IND_CARGO    varchar(10),
+		   CVE_IND_ABONO    varchar(10))
+		   
+-----------------------------------------------------------------------------------------------------
+-- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
+-----------------------------------------------------------------------------------------------------
+  INSERT @TChequera  (CVE_CHEQUERA, CVE_IND_CARGO, CVE_IND_ABONO)  
+  SELECT CVE_CHEQUERA, CVE_IND_CARGO, CVE_IND_ABONO  FROM CI_CHEQUERA WHERE
+  ISNULL(CVE_IND_CARGO,@k_no_aplica) <> @k_no_aplica AND ISNULL(CVE_IND_ABONO,@k_no_aplica) <> @k_no_aplica
+
+  SET @NunRegistros = @@ROWCOUNT
+-----------------------------------------------------------------------------------------------------
+  SET @RowCount     = 1
+  WHILE @RowCount <= @NunRegistros
+  BEGIN
+    SELECT @cve_chequera  = CVE_CHEQUERA, @cve_ind_cargo = CVE_IND_CARGO,
+	       @cve_ind_abono = CVE_IND_ABONO FROM @TChequera
+	WHERE  RowID  =  @RowCount
+
+    SET @cargos  =  0
+	SET @abonos  =  0
+
+	SELECT @cargos  =  SUM(IMP_TRANSACCION)  FROM CI_MOVTO_BANCARIO WHERE 
+	CVE_CHEQUERA    =  @cve_chequera  AND
+	CVE_CARGO_ABONO =  @k_cargo       AND
+	SIT_MOVTO = @k_activo
+
+	EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @cve_ind_cargo,  @cargos, @k_no_act
+
+    SELECT @abonos  =  SUM(IMP_TRANSACCION)  FROM CI_MOVTO_BANCARIO WHERE 
+	CVE_CHEQUERA    =  @cve_chequera  AND
+	CVE_CARGO_ABONO =  @k_abono       AND
+	SIT_MOVTO = @k_activo
+
+	EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @cve_ind_abono,  @abonos, @k_no_act
+
+	SET @RowCount   = @RowCount + 1
+  END
+
 END 
