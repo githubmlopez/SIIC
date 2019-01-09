@@ -11,7 +11,7 @@ BEGIN
   DROP  PROCEDURE spCargaFile
 END
 GO
--- exec spCargaFile 1,1,'MARIO', 1, 'CU',30,'201901', ' ', ' '
+-- exec spCargaFile 1,1,'MARIO',1,'CU','CARGAINF','201811',' ',' '
 CREATE PROCEDURE [dbo].[spCargaFile] 
 (
 @pIdProceso     numeric(9),	
@@ -19,11 +19,12 @@ CREATE PROCEDURE [dbo].[spCargaFile]
 @pCodigoUsuario varchar(20),
 @pIdCliente     int,
 @pCveEmpresa    varchar(4),
-@pIdFormato     int,
+@pCveAplicacion varchar(10),
 @pPeriodo       varchar(8), 
 @pError         varchar(80) OUT,
 @pMsgError      varchar(400) OUT
 )
+
 AS
 BEGIN
   DECLARE
@@ -84,9 +85,10 @@ BEGIN
   @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
-  @pIdFormato,
+  @pCveAplicacion,
   @pPeriodo, 
   @b_correcto OUT,
+  @id_formato OUT,
   @pathcalc OUT, 
   @cve_tipo_archivo OUT,
   @b_separador OUT,
@@ -100,13 +102,13 @@ BEGIN
     DELETE FROM FC_CARGA_COL_DATO  WHERE
     ID_CLIENTE  =  @pIdCliente  AND
 	CVE_EMPRESA =  @pCveEmpresa AND
-	ID_FORMATO  =  @pIdFormato  AND
+	ID_FORMATO  =  @id_formato  AND
 	PERIODO     =  @pPeriodo  
 
     DELETE FROM FC_CARGA_IND_DATO  WHERE
     ID_CLIENTE  =  @pIdCliente  AND
 	CVE_EMPRESA =  @pCveEmpresa AND
-	ID_FORMATO  =  @pIdFormato  AND
+	ID_FORMATO  =  @id_formato  AND
 	PERIODO     =  @pPeriodo  
 
 --  	SELECT @pathcalc
@@ -182,7 +184,7 @@ BEGIN
     FROM  FC_CARGA_RENG_ENCA  WHERE
           ID_CLIENTE  =  @pIdCliente  AND
 		  CVE_EMPRESA =  @pCveEmpresa AND
-		  ID_FORMATO  =  @pIdFormato  
+		  ID_FORMATO  =  @id_formato  
     SET @NunRegistros = @@ROWCOUNT
 -----------------------------------------------------------------------------------------------------
     SET @RowCount     = 1
@@ -208,7 +210,7 @@ BEGIN
       @pCodigoUsuario,
       @pIdCliente,
       @pCveEmpresa,
-      @pIdFormato,
+      @id_formato,
       @pPeriodo,
       @cve_tipo_bloque,
       @num_reng_ini,
@@ -230,7 +232,7 @@ BEGIN
       @pCodigoUsuario,
       @pIdCliente,
       @pCveEmpresa,
-      @pIdFormato,
+      @id_formato,
       @id_bloque,
       @num_campos,
       @res_ini,
@@ -284,7 +286,7 @@ BEGIN
 	FROM  FC_CARGA_IND  WHERE
     ID_CLIENTE  =  @pIdCliente  AND
     CVE_EMPRESA =  @pCveEmpresa AND
-	ID_FORMATO  =  @pIdFormato  
+	ID_FORMATO  =  @id_formato  
     SET @NunRegistros = @@ROWCOUNT
 -----------------------------------------------------------------------------------------------------
     SET @RowCount     = 1
@@ -309,7 +311,7 @@ BEGIN
       @pCodigoUsuario,
       @pIdCliente,
       @pCveEmpresa,
-      @pIdFormato,
+      @id_formato,
       @pPeriodo,
       @cve_tipo_bloque,
       @num_renglon,
@@ -340,7 +342,7 @@ BEGIN
         SELECT @tipo_campo = CVE_TIPO_CAMPO  FROM  FC_CARGA_IND  WHERE 
 	    ID_CLIENTE  = @pIdCliente  AND
         CVE_EMPRESA = @pCveEmpresa AND
-        ID_FORMATO  = @pIdFormato  AND
+        ID_FORMATO  = @id_formato  AND
         SECUENCIA   = @secuencia
         EXEC spObtCampoSep
              @pIdProceso,
@@ -348,7 +350,7 @@ BEGIN
              @pCodigoUsuario,
              @pIdCliente,
              @pCveEmpresa,
-             @pIdFormato,
+             @id_formato,
              @row_file,
              @tipo_campo, 
              @car_separador, 
@@ -374,7 +376,7 @@ BEGIN
       (
       @pIdCliente,
       @pCveEmpresa,
-      @pIdFormato,
+      @id_formato,
 	  @pPeriodo,
       @secuencia,
       @campo

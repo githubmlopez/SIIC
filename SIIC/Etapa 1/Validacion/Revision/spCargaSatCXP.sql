@@ -15,20 +15,32 @@ GO
 --EXEC spCargaSatCXP 1,1,'MARIO',1,'CU','FCTURACION',20,1,'201812',' ',' '
 CREATE PROCEDURE [dbo].[spCargaSatCXP]
 (
+--@pIdProceso       numeric(9),
+--@pIdTarea         numeric(9),
+--@pCodigoUsuario   varchar(20),
+--@pIdCliente       int,
+--@pCveEmpresa      varchar(4),
+--@pCveAplicacion   varchar(10),
+--@pIdFormato       int,
+--@pIdBloque        int,
+--@pAnoPeriodo      varchar(6),
+--@pError           varchar(80) OUT,
+--@pMsgError        varchar(400) OUT
+@pCveEmpresa      varchar(4),
+@pCodigoUsuario   varchar(20),
+@pAnoPeriodo      varchar(6),
 @pIdProceso       numeric(9),
 @pIdTarea         numeric(9),
-@pCodigoUsuario   varchar(20),
-@pIdCliente       int,
-@pCveEmpresa      varchar(4),
-@pCveAplicacion   varchar(10),
-@pIdFormato       int,
-@pIdBloque        int,
-@pAnoPeriodo      varchar(6),
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
 AS
 BEGIN
+
+  DECLARE @pIdCliente    int,
+          @pIdFormato    int,
+          @pIdBloque     int
+
   DECLARE @f_dummy       date = '2050-01-01',
           @f_cancelacion date,
           @cont_regist   int = 0, 
@@ -37,7 +49,8 @@ BEGIN
 
   DECLARE @k_verdadero   varchar(1) = 1,
           @k_activa      varchar(2) = 'A',
-		  @k_cancelada   varchar(2) = 'C'
+		  @k_cancelada   varchar(2) = 'C',
+		  @k_error       varchar(1) = 'E'
 
   DECLARE @TvpSatFact TABLE
  (
@@ -55,6 +68,14 @@ BEGIN
   ESTATUS         varchar (1)    NOT NULL,
   F_CANCELACION   date           NULL
   )
+
+  SELECT
+  @pIdCliente = CONVERT(INT,SUBSTRING(PARAMETRO,1,6)),
+  @pIdFormato = CONVERT(INT,SUBSTRING(PARAMETRO,7,12)),
+  @pIdBloque  = CONVERT(INT,SUBSTRING(PARAMETRO,13,18))
+  FROM  FC_GEN_PROCESO WHERE CVE_EMPRESA = @pCveEmpresa AND ID_PROCESO = @pIdProceso
+
+  BEGIN TRY
 
   INSERT INTO @TvpSatFact 
  (
@@ -270,5 +291,17 @@ BEGIN
   ESTATUS,
   F_CANCELACION
   FROM  @TvpSatFact
+
+  END TRY
+
+  BEGIN CATCH
+    SET  @pError    =  'Error Carga de CXP SAT'
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+--    SELECT @pMsgError
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+  END CATCH
+
+  EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @cont_regist
+
 END
 

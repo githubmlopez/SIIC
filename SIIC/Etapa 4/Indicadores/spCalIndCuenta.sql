@@ -9,6 +9,7 @@ SET NOCOUNT ON
 GO
 
 --DROP PROCEDURE spCalIndCuenta
+-- EXEC spCalIndCuenta 'CU','201812', 'MDB437INCA', 0
 ALTER PROCEDURE [dbo].[spCalIndCuenta]  @pCveEmpresa varchar(4), @pAnoMes varchar(6), @pCveIndicador varchar(10),
                                         @pTotIndicador  numeric(16,2) OUTPUT
 AS
@@ -78,7 +79,6 @@ BEGIN
   WHERE  CVE_EMPRESA  =  @pCveEmpresa  AND  CVE_INDICADOR  =  @pCveIndicador  
   SET @NunRegistros = @@ROWCOUNT
   SET @RowCount     = 1
-
   WHILE @RowCount <= @NunRegistros
   BEGIN
     SELECT @cve_empresa = CVE_EMPRESA, @cve_indicador = CVE_INDICADOR, @cta_contable = CTA_CONTABLE, @nivel = NIVEL,
@@ -96,6 +96,7 @@ BEGIN
   
     IF  @cve_tipo_calc = @k_poliza
 	BEGIN
+--      SELECT 'ENTRO 1'
 	  SELECT @tot_cargos = SUM(IMP_DEBE), @tot_abonos = SUM(IMP_HABER)  FROM  CI_DET_POLIZA p 
 	  WHERE  CVE_EMPRESA  = @pCveEmpresa  AND  ANO_MES  =  @pAnoMes  AND
 	        (SELECT  e.SIT_POLIZA  FROM CI_ENCA_POLIZA e  WHERE
@@ -111,19 +112,20 @@ BEGIN
     END
 	ELSE
 	BEGIN
+--	  SELECT 'ENTRO 2'
 	  IF  @cve_tipo_calc = @k_cuenta
 	  BEGIN
-       SELECT 'CTA ' + SUBSTRING(@cta_contable,1,@nivel)
+--       SELECT 'CTA ' + SUBSTRING(@cta_contable,1,@nivel)
 	    SELECT @tot_cargos = SUM(IMP_DEBE), @tot_abonos = SUM(IMP_HABER)  FROM  CI_DET_POLIZA p 
 	    WHERE  CVE_EMPRESA  = @pCveEmpresa  AND  ANO_MES  =  @pAnoMes AND
 			   SUBSTRING(CTA_CONTABLE,1,@nivel) = SUBSTRING(@cta_contable,1,@nivel)
         SET @tot_cargos = ISNULL(@tot_cargos,0)
 		SET @tot_abonos = ISNULL(@tot_abonos,0)
 
-  SELECT 'DEBE '
-  SELECT CONVERT(VARCHAR(16), @tot_cargos) 		
-  SELECT 'HABER' 
-  SELECT CONVERT(VARCHAR(16), @tot_abonos) 		
+  --SELECT 'DEBE 1'
+  --SELECT CONVERT(VARCHAR(16), @tot_cargos) 		
+  --SELECT 'HABER 1' 
+  --SELECT CONVERT(VARCHAR(16), @tot_abonos) 		
 	  END
 	  ELSE
 	  BEGIN
@@ -146,9 +148,12 @@ BEGIN
 	BEGIN
       SET @sdo_inicio_mes  =  0
 	END
+
+--    SELECT ' CARGO ABONO ', + @cve_cargo + @cve_abono
 			 
     IF  @cve_cargo  =  @k_no_aplica
 	BEGIN
+--      SELECT 'HAGO CERO LOS CARGOS'
 	  SET  @tot_cargos  = 0
 	END 
 	ELSE
@@ -185,11 +190,16 @@ BEGIN
 	  END
 	END
 --    SELECT  'SL CTA (AC) ' + isnull(CONVERT(VARCHAR(10), @tot_abonos),'99')
-
 	SET  @pTotIndicador  =  @pTotIndicador + @tot_cargos  +  @tot_abonos + @sdo_inicio_mes
 --	SELECT CONVERT(VARCHAR(4), @nivel) 
-	
     SET @RowCount = @RowCount + 1
+--SELECT 'DEBE 2'
+--SELECT CONVERT(VARCHAR(16), @tot_cargos) 		
+--SELECT 'HABER 2' 
+--SELECT CONVERT(VARCHAR(16), @tot_abonos) 
+--SELECT 'TOTAL' 
+--SELECT CONVERT(VARCHAR(16), @pTotIndicador) 		
+
 
   END                                                                                             
 END

@@ -28,12 +28,15 @@ GO
 -- Porceso que concilia la balanza previa con Balanza del COI
 -- Antes de correr este proceso se debe general actualizar pólizas en el COI y general balanza
 --EXEC spLanzaMonitor 'CU', 'MLOPEZ', '201805', 'E6M1COCOI', 0
-
-ALTER PROCEDURE [dbo].[spLanzaMonitor]  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6),
-                                        @pCveMonitor  varchar(10), @pIdProceso  numeric(9,0)
+IF  EXISTS( SELECT 1 FROM ADMON01.sys.procedures WHERE Name =  'spLanzaMonitor')
+BEGIN
+  DROP  PROCEDURE spLanzaMonitor
+END
+GO
+CREATE PROCEDURE [dbo].[spLanzaMonitor]  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6),
+                                         @pCveMonitor  varchar(10), @pIdProceso  numeric(9,0)
 AS
 BEGIN
-
   DECLARE @k_falso         bit  =  0,
           @k_verdadero     bit  =  1,
 		  @k_warning       varchar(1)  =  'W',

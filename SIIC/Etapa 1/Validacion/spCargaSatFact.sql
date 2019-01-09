@@ -12,23 +12,36 @@ BEGIN
   DROP  PROCEDURE spCargaSatFact
 END
 GO
---EXEC spCargaSatFact 1,1,'MARIO',1,'CU','FCTURACION',30,1,'201901',' ',' '
+--EXEC spCargaSatFact 'CU','MARIO','201811',80,1,' ',' '
 CREATE PROCEDURE [dbo].[spCargaSatFact]
 (
+--@pIdProceso       numeric(9),
+--@pIdTarea         numeric(9),
+--@pCodigoUsuario   varchar(20),
+--@pIdCliente       int,
+--@pCveEmpresa      varchar(4),
+--@pCveAplicacion   varchar(10),
+--@pIdFormato       int,
+--@pIdBloque        int,
+--@pAnoPeriodo      varchar(6),
+--@pError           varchar(80) OUT,
+--@pMsgError        varchar(400) OUT
+--)
+@pCveEmpresa      varchar(4),
+@pCodigoUsuario   varchar(20),
+@pAnoPeriodo      varchar(6),
 @pIdProceso       numeric(9),
 @pIdTarea         numeric(9),
-@pCodigoUsuario   varchar(20),
-@pIdCliente       int,
-@pCveEmpresa      varchar(4),
-@pCveAplicacion   varchar(10),
-@pIdFormato       int,
-@pIdBloque        int,
-@pAnoPeriodo      varchar(6),
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
 AS
 BEGIN
+
+  DECLARE @pIdCliente    int,
+          @pIdFormato    int,
+          @pIdBloque     int
+
   DECLARE @f_dummy       date = '2050-01-01',
           @f_cancelacion date,
           @cont_regist   int = 0, 
@@ -37,7 +50,10 @@ BEGIN
 
   DECLARE @k_verdadero   varchar(1) = 1,
           @k_activa      varchar(2) = 'A',
-		  @k_cancelada   varchar(2) = 'C'
+		  @k_cancelada   varchar(2) = 'C',
+		  @k_error       varchar(1) = 'E',
+		  @k_factura     int        = 30,
+		  @k_CXP         int        = 20
 
   DECLARE @TvpSatFact TABLE
  (
@@ -55,6 +71,18 @@ BEGIN
   ESTATUS         varchar (1)    NOT NULL,
   F_CANCELACION   date           NULL
   )
+
+  SELECT
+  @pIdCliente = CONVERT(INT,SUBSTRING(PARAMETRO,1,6)),
+  @pIdFormato = CONVERT(INT,SUBSTRING(PARAMETRO,7,6)),
+  @pIdBloque  = CONVERT(INT,SUBSTRING(PARAMETRO,13,6))
+  FROM  FC_GEN_PROCESO WHERE CVE_EMPRESA = @pCveEmpresa AND ID_PROCESO = @pIdProceso
+
+  SELECT CONVERT(varchar(10),@pIdCliente)
+  SELECT CONVERT(varchar(10),@pIdFormato)
+  SELECT CONVERT(varchar(10),@pIdBloque)
+
+  BEGIN TRY
 
   INSERT INTO @TvpSatFact 
  (
@@ -240,34 +268,82 @@ BEGIN
   DELETE FROM CI_SAT_FACTURA WHERE ID_UNICO IN
  (SELECT ID_UNICO FROM @TvpSatFact)
 
-  INSERT CI_SAT_FACTURA 
- (
-  ID_UNICO,
-  RFC_EMISOR,
-  NOM_EMISOR,
-  RFC_RECEPTOR,
-  NOM_RECEPTOR,
-  RFC_PAC,
-  F_EMISION,
-  F_CERTIFICACION,
-  IMP_FACTURA,
-  EFECTO_COMPROB,
-  ESTATUS,
-  F_CANCELACION
-  )
-  SELECT 
-  ID_UNICO,
-  RFC_EMISOR,
-  NOM_EMISOR,
-  RFC_RECEPTOR,
-  NOM_RECEPTOR,
-  RFC_PAC,
-  F_EMISION,
-  F_CERTIFICACION,
-  IMP_FACTURA,
-  EFECTO_COMPROB,
-  ESTATUS,
-  F_CANCELACION
-  FROM  @TvpSatFact
+  IF  @pIdFormato  =  @k_factura
+  BEGIN
+    INSERT CI_SAT_FACTURA 
+   (
+    ID_UNICO,
+    RFC_EMISOR,
+    NOM_EMISOR,
+    RFC_RECEPTOR,
+    NOM_RECEPTOR,
+    RFC_PAC,
+    F_EMISION,
+    F_CERTIFICACION,
+    IMP_FACTURA,
+    EFECTO_COMPROB,
+    ESTATUS,
+    F_CANCELACION
+    )
+    SELECT 
+    ID_UNICO,
+    RFC_EMISOR,
+    NOM_EMISOR,
+    RFC_RECEPTOR,
+    NOM_RECEPTOR,
+    RFC_PAC,
+    F_EMISION,
+    F_CERTIFICACION,
+    IMP_FACTURA,
+    EFECTO_COMPROB,
+    ESTATUS,
+    F_CANCELACION
+    FROM  @TvpSatFact
+  END
+  ELSE
+  BEGIN
+    INSERT CI_SAT_CXP 
+   (
+    ID_UNICO,
+    RFC_EMISOR,
+    NOM_EMISOR,
+    RFC_RECEPTOR,
+    NOM_RECEPTOR,
+    RFC_PAC,
+    F_EMISION,
+    F_CERTIFICACION,
+    IMP_FACTURA,
+    EFECTO_COMPROB,
+    ESTATUS,
+    F_CANCELACION
+    )
+    SELECT 
+    ID_UNICO,
+    RFC_EMISOR,
+    NOM_EMISOR,
+    RFC_RECEPTOR,
+    NOM_RECEPTOR,
+    RFC_PAC,
+    F_EMISION,
+    F_CERTIFICACION,
+    IMP_FACTURA,
+    EFECTO_COMPROB,
+    ESTATUS,
+    F_CANCELACION
+    FROM  @TvpSatFact
+
+  END
+  END TRY
+
+  BEGIN CATCH
+    SET  @pError    =  'Error Carga de Facturas SAT'
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+--    SELECT @pMsgError
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+  END CATCH
+
+  EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @cont_regist
+
+
 END
 

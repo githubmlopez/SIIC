@@ -172,14 +172,16 @@ BEGIN
 	SELECT @cargos  =  SUM(IMP_TRANSACCION)  FROM CI_MOVTO_BANCARIO WHERE 
 	CVE_CHEQUERA    =  @cve_chequera  AND
 	CVE_CARGO_ABONO =  @k_cargo       AND
-	SIT_MOVTO = @k_activo
+	ANO_MES         =  @pAnoMes       AND
+	SIT_MOVTO       =  @k_activo
 
 	EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @cve_ind_cargo,  @cargos, @k_no_act
 
     SELECT @abonos  =  SUM(IMP_TRANSACCION)  FROM CI_MOVTO_BANCARIO WHERE 
 	CVE_CHEQUERA    =  @cve_chequera  AND
 	CVE_CARGO_ABONO =  @k_abono       AND
-	SIT_MOVTO = @k_activo
+	ANO_MES         =  @pAnoMes       AND
+	SIT_MOVTO       =  @k_activo
 
 	EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @cve_ind_abono,  @abonos, @k_no_act
 
