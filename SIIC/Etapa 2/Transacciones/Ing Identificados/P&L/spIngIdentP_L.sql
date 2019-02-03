@@ -131,15 +131,15 @@ BEGIN
 --  SET      @k_ing_factura    =  'IDEFAC'
 
   BEGIN TRY
-  
+
   -- Borra Cifras de Control asociadas
 
   --INSERT INTO @LISTA (valor) VALUES (@k_per_dolar),(@k_gan_dolar),(@k_per_pesos),(@k_gan_pesos)
 
   UPDATE  CI_CONCILIA_C_X_C  SET IMP_PAGO_AJUST = 0 WHERE ANOMES_PROCESO = @pAnoMes
 
-  EXEC spProrrateaPago @pAnoMes
-  
+  EXEC spProrrateaPago @pCveEmpresa, @pAnoMes
+    
   EXEC spBorraTransac  @pCveEmpresa, @pAnoMes, @pIdProceso
 
   UPDATE CI_FOLIO SET NUM_FOLIO = NUM_FOLIO + 1 WHERE CVE_FOLIO  = @k_gpo_transac
@@ -190,7 +190,8 @@ BEGIN
   --THEN   (dbo.fnAcumMovtosBanc(f.ID_CONCILIA_CXC) - 
   --      ((dbo.fnAcumMovtosBanc(f.ID_CONCILIA_CXC) / @k_fact_iva) * @k_iva)) -
 		-- (f.IMP_F_NETO - f.IMP_F_IVA)
-  THEN dbo.fnAcumMovtosBanc(f.ID_CONCILIA_CXC, f.CVE_F_MONEDA, f.IMP_F_BRUTO, f.F_OPERACION)	
+  THEN 
+  dbo.fnAcumMovtosBanc(@pCveEmpresa, @pAnoMes, f.ID_CONCILIA_CXC, f.CVE_F_MONEDA, f.IMP_F_BRUTO, f.F_OPERACION)	
   ELSE  0
   END,
 --04 'IMCP', Importe Complementario Pesos
@@ -202,7 +203,7 @@ BEGIN
 --07 'IMND', Importe Neto Dólares
   CASE
   WHEN    f.CVE_F_MONEDA  =  @k_dolar
-  THEN dbo.fnAcumMovtosBanc(f.ID_CONCILIA_CXC, f.CVE_F_MONEDA, f.IMP_F_BRUTO, f.F_OPERACION)		 
+  THEN dbo.fnAcumMovtosBanc(@pCveEmpresa, @pAnoMes, f.ID_CONCILIA_CXC, f.CVE_F_MONEDA, f.IMP_F_BRUTO, f.F_OPERACION)		 
   ELSE    0
   END, 
 --08 'CTCO', Cuenta Contable
@@ -220,13 +221,13 @@ BEGIN
 --14 'PROY', Proyecto
   ' ',
 --15 'CPTO', Concepto
-  f.SERIE + CONVERT(VARCHAR(10), f.ID_CXC) + c.NOM_CLIENTE + CONVERT(VARCHAR(10), f.TIPO_CAMBIO),
+  f.SERIE + CONVERT(VARCHAR(10), f.ID_CXC) + c.NOM_CLIENTE + CONVERT(VARCHAR(10), dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION)),
 -- Campos de trabajo
   f.SIT_TRANSACCION,
   f.F_OPERACION,
   f.CVE_F_MONEDA,
   c.NOM_CLIENTE,
-  SERIE + '-' + CONVERT(VARCHAR(8),f.ID_CXC) + '-' + c.NOM_CLIENTE + '-' + CONVERT(VARCHAR(8),f.TIPO_CAMBIO)
+  SERIE + '-' + CONVERT(VARCHAR(8),f.ID_CXC) + '-' + c.NOM_CLIENTE + '-' + CONVERT(VARCHAR(8),dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION))
   FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
   WHERE   f.CVE_EMPRESA      =  @pCveEmpresa   AND
           f.ID_VENTA         =  v.ID_VENTA     AND

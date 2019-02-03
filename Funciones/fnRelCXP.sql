@@ -1,3 +1,5 @@
+USE ADMON01
+GO 
 ALTER FUNCTION fnRelCXP (@pcve_empresa varchar(4), @pserie varchar(6), @pid_cxc int, @pid_item int)
 RETURNS numeric(18,2)
 -- WITH EXECUTE AS CALLER

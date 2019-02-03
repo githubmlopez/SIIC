@@ -10,6 +10,8 @@ GO
 ALTER PROCEDURE spFacturacion  @pCveEmpresa  varchar(4), @pFInicial date, @pFFinal date, @pAnoMes varchar(6)
 AS
 BEGIN
+  DECLARE  @ano_mes_ant       varchar(6)
+  
   DECLARE  @k_activa          varchar(1)  =  'A',
            @k_cancelada       varchar(1)  =  'C',
            @k_legada          varchar(6)  =  'LEGACY',
@@ -17,6 +19,8 @@ BEGIN
            @k_dolar           varchar(1)  =  'D',
            @k_falso           bit         =  0,
            @k_verdadero       bit         =  1
+
+   SET @ano_mes_ant = dbo.fnObtAnoMesAnt(@pAnoMes)
 
    SELECT
    LEFT(CONVERT(VARCHAR, f.F_OPERACION, 120), 10) AS F_OPERACION,    
@@ -31,7 +35,7 @@ BEGIN
    CONVERT(VARCHAR(12),f.IMP_F_IVA) AS IMP_F_IVA,
    CONVERT(VARCHAR(12),f.IMP_F_NETO) AS IMP_F_NETO,
    f.CVE_F_MONEDA,
-   CONVERT(VARCHAR(12),dbo.fnCalculaPesos(f.F_OPERACION, f.IMP_F_NETO, CVE_F_MONEDA)) AS IMP_PESOS,  
+   CONVERT(VARCHAR(12),dbo.fnCalculaPesosC(@pCveEmpresa, @ano_mes_ant, f.F_OPERACION, f.IMP_F_NETO, CVE_F_MONEDA)) AS IMP_PESOS,  
    i.IMP_BRUTO_ITEM, SIT_TRANSACCION 
    from CI_FACTURA f, CI_ITEM_C_X_C i, CI_SUBPRODUCTO s, CI_PRODUCTO p, CI_VENTA v, CI_VENDEDOR ve, CI_CLIENTE c     
    where dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION))  = @pAnoMes AND 

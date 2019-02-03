@@ -51,7 +51,7 @@ BEGIN
   a.CVE_TIPO_NOMINA  = @pCveTipoNomina  AND
   a.ID_CLIENTE       = m.ID_CLIENTE     AND
   a.CVE_EMPRESA      = m.CVE_EMPRESA    AND
-  a.CVE_MOTIVO       = m.CVE_MOTIVO     AND
+  a.ID_MOTIVO        = m.ID_MOTIVO      AND
   m.B_INCAPACIDAD    = @k_verdadero     AND
   @pAnoPeriodo BETWEEN  a.ANO_PERIODO_INI AND a.ANO_PERIODO_FIN
 

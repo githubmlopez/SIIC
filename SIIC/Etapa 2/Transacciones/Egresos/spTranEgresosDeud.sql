@@ -7,7 +7,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 -- DROP PROCEDURE spTranFacturacion
-CREATE PROCEDURE spTranEgresosDeud @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
+ALTER PROCEDURE spTranEgresosDeud @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                    @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								   @pMsgError varchar(400) OUT
 AS

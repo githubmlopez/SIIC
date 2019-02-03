@@ -130,7 +130,7 @@ BEGIN
   SET      @k_error          =  'E'
 
   BEGIN TRY
-
+ 
   --INSERT INTO @LISTA (valor) 
   --SELECT  CVE_OPER_CONT  FROM CI_MOV_CONT_BANC 
 
@@ -189,17 +189,18 @@ BEGIN
   WHEN    ch.CVE_MONEDA  =  @k_peso
   THEN    m.IMP_TRANSACCION 
   WHEN    ch.CVE_MONEDA  =  @k_dolar
-  THEN    m.IMP_TRANSACCION * dbo.fnObtTipoCamb(m.F_OPERACION)
+  THEN    m.IMP_TRANSACCION * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, m.F_OPERACION)
   ELSE    0
   END,
 --04 'IMCP', Importe Complementario Pesos
-  dbo.fnObtImpComplem (@pAnoMes, m.CVE_CHEQUERA, m.F_OPERACION, m.ID_MOVTO_BANCARIO, ch.CVE_MONEDA, m.IMP_TRANSACCION),
+  dbo.fnObtImpComplem
+  (@pCveEmpresa, @pAnoMes, m.CVE_CHEQUERA, m.F_OPERACION, m.ID_MOVTO_BANCARIO, ch.CVE_MONEDA, m.IMP_TRANSACCION),
 --05 'IMBD', Importe Bruto Dólares
   0,
 --06 'IMID', Importe IVA Dólares
   CASE
   WHEN  ch.CVE_MONEDA = @k_dolar AND t.CVE_TIPO_CONT = @k_iva
-  THEN  m.IMP_TRANSACCION * dbo.fnObtTipoCamb(m.F_OPERACION)
+  THEN  m.IMP_TRANSACCION * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, m.F_OPERACION)
   ELSE  0
   END,
 --07 'IMND', Importe Neto Dólares

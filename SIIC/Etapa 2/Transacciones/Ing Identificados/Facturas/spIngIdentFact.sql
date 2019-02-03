@@ -192,7 +192,7 @@ BEGIN
 --04 'IMCP', Importe Complementario Pesos
   CASE
   WHEN    f.CVE_F_MONEDA  =  @k_dolar
-  THEN   (f.IMP_F_NETO * dbo.fnObtTipoCamb(f.F_OPERACION)) - f.IMP_F_NETO
+  THEN   (f.IMP_F_NETO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION)) - f.IMP_F_NETO
   ELSE    0
   END,
 --05 'IMBD', Importe Bruto Dólares
@@ -204,7 +204,7 @@ BEGIN
 --06 'IMID', Importe IVA Dólares
   CASE
   WHEN    f.CVE_F_MONEDA  =  @k_dolar
-  THEN    IMP_F_IVA * dbo.fnObtTipoCamb(f.F_OPERACION)
+  THEN    IMP_F_IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION)
   ELSE    0
   END,
 --07 'IMND', Importe Neto Dólares
@@ -228,13 +228,13 @@ BEGIN
 --14 'PROY', Proyecto
   ' ',
 --15 'CPTO', Concepto
-  f.SERIE + CONVERT(VARCHAR(10), f.ID_CXC) + c.NOM_CLIENTE + CONVERT(VARCHAR(10), f.TIPO_CAMBIO),
+  f.SERIE + CONVERT(VARCHAR(10), f.ID_CXC) + c.NOM_CLIENTE + CONVERT(VARCHAR(10), dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION)),
 -- Campos de trabajo
   f.SIT_TRANSACCION,
   f.F_OPERACION,
   f.CVE_F_MONEDA,
   c.NOM_CLIENTE,
-  SERIE + '-' + CONVERT(VARCHAR(8),f.ID_CXC) + '-' + c.NOM_CLIENTE + '-' + CONVERT(VARCHAR(8),f.TIPO_CAMBIO)
+  SERIE + '-' + CONVERT(VARCHAR(8),f.ID_CXC) + '-' + c.NOM_CLIENTE + '-' + CONVERT(VARCHAR(8), dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION))
   FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
   WHERE   f.CVE_EMPRESA      =  @pCveEmpresa   AND
           f.ID_VENTA         =  v.ID_VENTA     AND

@@ -1,6 +1,6 @@
 USE [ADNOMINA01]
 GO
-/****** Calcula Factore de Integración para cuotas del IMSS ******/
+/****** Calcula Factor de Integración para cuotas del IMSS ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -97,7 +97,7 @@ BEGIN
   END
   ELSE
   BEGIN
-    SET  @pError    =  'Empresa inexistente ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
+    SET  @pError    =  'Empresa inexistente ' + '(P)' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento 
 	  @pIdProceso,

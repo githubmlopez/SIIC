@@ -51,6 +51,7 @@ BEGIN
 
   DECLARE  @k_csv         varchar(3) = 'CSV',
            @k_txt         varchar(3) = 'TXT',
+		   @k_directorio  varchar(3) = 'DIR',
 		   @k_verdadero   bit        = 1,
 		   @k_falso       bit        = 1
 ------------------------------------------------------------------------------
@@ -71,7 +72,7 @@ BEGIN
   SET @NunRegistros = @@ROWCOUNT
 -----------------------------------------------------------------------------------------------------
   SET @RowCount     = 1
---  select * from @TBloque
+
   WHILE @RowCount <= @NunRegistros
   BEGIN
     SELECT @row_file = Rowfile
@@ -97,7 +98,7 @@ BEGIN
 	  NUM_COLUMNA = @num_columna    
 --	  select 'tipo campo ' + @tipo_campo
 
-      IF  @pCveTipoArchivo  =  @k_csv OR
+      IF  @pCveTipoArchivo  =  @k_csv OR  @pCveTipoArchivo  = @k_directorio OR
 	     (@pCveTipoArchivo  =  @k_txt AND @pBSeparador = @k_verdadero)
 	  BEGIN
         EXEC spObtCampoSep

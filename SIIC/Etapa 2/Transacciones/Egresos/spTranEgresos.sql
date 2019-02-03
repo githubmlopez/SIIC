@@ -128,6 +128,7 @@ BEGIN
   
 --  INSERT INTO @LISTA (valor) VALUES(@k_op_cancel),(@k_op_normal)
 
+
   EXEC spBorraTransac  @pCveEmpresa, @pAnoMes, @pIdProceso
 
   DELETE  FROM CI_PERIODO_IVA  WHERE CVE_EMPRESA  =  @pCveEmpresa  AND  ANO_MES  =  @pAnoMes  AND CVE_TIPO  =  @k_tipo_iva
@@ -197,13 +198,13 @@ BEGIN
  --05 'IMBD', Importe Bruto Dólares
   CASE
   WHEN    c.CVE_MONEDA  =  @k_dolar
-  THEN    i.IMP_BRUTO  * dbo.fnObtTipoCamb(c.F_CAPTURA)
+  THEN    i.IMP_BRUTO  * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, c.F_CAPTURA)
   ELSE    0
   END,
 --06 'IMID', Importe IVA Dólares
   CASE
   WHEN    c.CVE_MONEDA  =  @k_dolar
-  THEN    i.IVA * dbo.fnObtTipoCamb(c.F_CAPTURA)
+  THEN    i.IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, c.F_CAPTURA)
   ELSE    0
   END,
 --07 'IMND', Importe Neto Dólares
@@ -273,19 +274,19 @@ BEGIN
 --04 'IMCP', Importe Complementario Pesos
   CASE
   WHEN    c.CVE_MONEDA =  @k_dolar
-  THEN   ((c.IMP_NETO) * dbo.fnObtTipoCamb(c.F_CAPTURA)) - (c.IMP_NETO)
+  THEN   ((c.IMP_NETO) * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, c.F_CAPTURA)) - (c.IMP_NETO)
   ELSE    0
   END,
 --05 'IMBD', Importe Bruto Dólares
   CASE
   WHEN    c.CVE_MONEDA  =  @k_dolar
-  THEN    c.IMP_BRUTO  * dbo.fnObtTipoCamb(c.F_CAPTURA)
+  THEN    c.IMP_BRUTO  * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, c.F_CAPTURA)
   ELSE    0
   END,
 --06 'IMID', Importe IVA Dólares
   CASE
   WHEN    c.CVE_MONEDA  =  @k_dolar
-  THEN    c.IMP_IVA  * dbo.fnObtTipoCamb(c.F_CAPTURA)
+  THEN    c.IMP_IVA  * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, c.F_CAPTURA)
   ELSE    0
   END,
 --07 'IMND', Importe Neto Dólares

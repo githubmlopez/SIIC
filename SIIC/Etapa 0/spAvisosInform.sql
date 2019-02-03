@@ -185,8 +185,8 @@ BEGIN
   INSERT  @TCtasxCobrar(ID_CXC, IMP_BRUTO, IMP_IVA, IMP_NETO, CVE_MONEDA, CVE_CHEQUERA, ID_CONCILIA_CXC, SIT_TRANSACCION,
                         TIPO_CAMBIO, F_OPERACION) 
   SELECT  ID_CXC, IMP_F_BRUTO, IMP_F_IVA, IMP_F_NETO, CVE_F_MONEDA, CVE_CHEQUERA, ID_CONCILIA_CXC, SIT_TRANSACCION,
-          TIPO_CAMBIO, F_OPERACION
-  from CI_FACTURA WHERE CVE_EMPRESA  =  @pCveEmpresa  AND
+          dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, F_OPERACION), F_OPERACION
+  FROM  CI_FACTURA WHERE CVE_EMPRESA  =  @pCveEmpresa  AND
                   dbo.fnArmaAnoMes (YEAR(F_OPERACION), MONTH(F_OPERACION))  =  @pAnoMes
   SET @NunRegistros = @@ROWCOUNT
 -------------------------------------------------------------------------------------
@@ -200,7 +200,7 @@ BEGIN
 		   @tipo_cambio = TIPO_CAMBIO, @f_operacion = F_OPERACION
 	FROM   @TCtasxCobrar  WHERE  RowID = @RowCount
 
-    IF  @tipo_cambio <>  dbo.fnObtTipoCamb(@f_operacion) AND @cve_moneda = @k_dolar
+    IF  @tipo_cambio <>  dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, @f_operacion) AND @cve_moneda = @k_dolar
 	BEGIN
       SET  @num_reg_proc = @num_reg_proc + 1  
       SET  @pError    =  'La CXC ' + CONVERT(VARCHAR(10),@id_cxc) + ' con tipo cambio dif. al del día'   

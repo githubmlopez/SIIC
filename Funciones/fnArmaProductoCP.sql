@@ -1,4 +1,7 @@
-CREATE FUNCTION fnArmaProductoCP (@id_concilia_cxp int)
+USE ADMON01
+GO
+
+ALTER FUNCTION fnArmaProductoCP (@id_concilia_cxp int)
 RETURNS varchar(45)
 -- WITH EXECUTE AS CALLER
 AS

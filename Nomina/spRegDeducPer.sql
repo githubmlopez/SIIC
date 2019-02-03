@@ -25,21 +25,30 @@ CREATE PROCEDURE [dbo].[spRegDeducPer]
 @pAnoPeriodo      varchar(6),
 @pIdEmpleado      int,
 @pZona            int,
+@pCvePuesto       varchar(15),
 @pCveTipoEmpleado varchar(2),
 @pCveTipoPercep   varchar(2),
 @pFIngreso        date,
 @pSueldoMensual   numeric(16,2),
+@pIdRegFiscal     int,
+@pIdTipoCont      int,
+@pIdBanco         int,
+@pIdJorLab        int,
+@pIdRegContrat    int,
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
 AS
 BEGIN
+
+--  SELECT 'pRegDeducPer'
   DECLARE  @cve_concepto      varchar(4)  =  ' ',
            @imp_concepto      int         =  0,
 		   @gpo_transaccion   int         =  0
 
   DECLARE  @k_verdadero       bit         =  1,
-		   @k_falso           bit         =  0
+		   @k_falso           bit         =  0,
+		   @k_error           varchar(1)  =  'E'
 
   DECLARE  @NumRegistros      int, 
            @RowCount          int
@@ -82,6 +91,8 @@ BEGIN
 ------------------------------------------------------------------------------------------------------
   SET @RowCount     = 1
 
+  BEGIN TRY
+
   WHILE @RowCount <= @NumRegistros
   BEGIN
     SELECT @cve_concepto = CVE_CONCEPTO, @imp_concepto = IMP_CONCEPTO
@@ -110,7 +121,23 @@ BEGIN
     SET @RowCount     = @RowCount + 1
 
   END
+
+  END TRY
   
+  BEGIN CATCH
+    SET  @pError    =  'E- Deduc. Pers. ' + '(P)' + ERROR_PROCEDURE() 
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento 
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_error,
+    @pError,
+    @pMsgError
+ END CATCH
 -------------------------------------------------------------------------------
 -- Calculo de deducciones por periodo definido
 -------------------------------------------------------------------------------
@@ -142,10 +169,13 @@ BEGIN
 
   SET @RowCount     = 1
 
+  BEGIN TRY
+
   WHILE @RowCount <= @NumRegistros
   BEGIN
     SELECT @cve_concepto = CVE_CONCEPTO, @imp_concepto = IMP_CONCEPTO
 	FROM   @TDeduccion2  WHERE  RowID = @RowCount
+
 	EXEC spInsPreNomina  
     @pIdProceso,
     @pIdTarea,
@@ -167,6 +197,22 @@ BEGIN
     @pMsgError OUT
 
     SET @RowCount     = @RowCount + 1
-
   END
+
+  END TRY
+  
+  BEGIN CATCH
+    SET  @pError    =  'E- Deduc. Periodo ' + CONVERT(VARCHAR(10), @pIdEmpleado) + '(P)' + ERROR_PROCEDURE() 
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento 
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_error,
+    @pError,
+    @pMsgError
+  END CATCH
 END

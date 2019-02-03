@@ -59,17 +59,17 @@ BEGIN
               f.SIT_TRANSACCION,
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_BRUTO * f.TIPO_CAMBIO
+			  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCamb(f.F_OPERACION)
 			  ELSE f.IMP_F_BRUTO
 			  END AS IMP_F_BRUTO,
 			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_IVA * f.TIPO_CAMBIO
+			  THEN f.IMP_F_IVA * dbo.fnObtTipoCamb(f.F_OPERACION)
 			  ELSE f.IMP_F_IVA
 			  END AS IMP_F_IVA,
  			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_NETO * f.TIPO_CAMBIO
+			  THEN f.IMP_F_NETO * dbo.fnObtTipoCamb(f.F_OPERACION)
 			  ELSE f.IMP_F_NETO
 			  END AS IMP_F_NETO
 	          FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
@@ -85,17 +85,17 @@ BEGIN
 			  SELECT f.CVE_EMPRESA, f.SERIE, f.ID_CXC, c.ID_CLIENTE, c.NOM_CLIENTE, f.F_OPERACION, @k_activa,
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_BRUTO * f.TIPO_CAMBIO
+			  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCamb(f.F_OPERACION)
 			  ELSE f.IMP_F_BRUTO
 			  END AS IMP_F_BRUTO,
 			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_IVA * f.TIPO_CAMBIO
+			  THEN f.IMP_F_IVA * dbo.fnObtTipoCamb(f.F_OPERACION)
 			  ELSE f.IMP_F_IVA
 			  END AS IMP_F_IVA,
  			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_NETO * f.TIPO_CAMBIO
+			  THEN f.IMP_F_NETO * dbo.fnObtTipoCamb(f.F_OPERACION)
 			  ELSE f.IMP_F_NETO
 			  END AS IMP_F_NETO
 	          FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c

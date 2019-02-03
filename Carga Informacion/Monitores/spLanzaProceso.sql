@@ -9,11 +9,11 @@ SET NOCOUNT ON
 GO
 IF  EXISTS( SELECT 1 FROM CARGADOR.sys.procedures WHERE Name =  'spLanzaProceso')
 BEGIN
-  DROP  PROCEDURE spLanzaProceso
+  DROP  PROCEDURE [dbo].[spLanzaProceso]
 END
 GO
 -- exec spLanzaProceso 1,'MARIO',1,'CU','CARGAINF','CARGASAT','201811', spCargaFile,0,' ',' '
-CREATE PROCEDURE spLanzaProceso
+CREATE PROCEDURE [dbo].[spLanzaProceso]
 (
 @pIdProceso       numeric(9),
 @pCodigoUsuario   varchar(20),
@@ -55,7 +55,7 @@ BEGIN
   @error OUT,
   @msg_error OUT 
 
-  SELECT 'LANZO ', CONVERT(VARCHAR(5), @id_tarea) + ' ' + CONVERT(VARCHAR(5), @pIdProceso)
+--  SELECT 'LANZO ', CONVERT(VARCHAR(5), @id_tarea) + ' ' + CONVERT(VARCHAR(5), @pIdProceso)
 
   SET @sql = N'EXEC ' + @pStoreProc +  
  N' @IdProceso_p,'     +
@@ -79,7 +79,7 @@ BEGIN
   '@error_p varchar(80) OUT,'     +
   '@msg_error_p varchar(400) OUT'
 
-    SELECT ' sql==> ' + @sql
+--   SELECT ' sql==> ' + @sql
 
   EXEC sp_executesql @sql, @parametros,
   @IdProceso_p     = @pIdProceso,

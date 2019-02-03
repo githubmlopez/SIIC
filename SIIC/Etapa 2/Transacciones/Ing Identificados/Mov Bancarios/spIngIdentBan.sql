@@ -79,7 +79,6 @@ BEGIN
   @f_dia               date,
   @conc_factura        varchar(50),
   @b_acredita          bit
-
   
   DECLARE  @f_inicio_mes      date,
            @f_fin_mes         date,
@@ -143,7 +142,6 @@ BEGIN
 --  SET      @k_ing_factura    =  'IDEFAC'
 
   BEGIN TRY
-  
   -- Borra Cifras de Control asociadas
   
   --INSERT INTO @LISTA (valor) VALUES (@k_mov_dolar),(@k_mov_pesos)
@@ -211,7 +209,7 @@ BEGIN
 --04 'IMCP', Importe Complementario Pesos
   CASE
   WHEN    ch.CVE_MONEDA  =  @k_dolar
-  THEN    (m.IMP_TRANSACCION  * dbo.fnObtTipoCamb(m.F_OPERACION)) - m.IMP_TRANSACCION
+  THEN    (m.IMP_TRANSACCION  * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, m.F_OPERACION)) - m.IMP_TRANSACCION
   ELSE    0
   END,
 --05 'IMBD', Importe Bruto Dólares
@@ -219,7 +217,8 @@ BEGIN
 --06 'IMID', Importe IVA Dólares
   CASE
   WHEN    ch.CVE_MONEDA  =  @k_dolar
-  THEN   dbo.fnCalculaPesos(m.F_OPERACION, (m.IMP_TRANSACCION / @k_fact_iva) * @k_iva, ch.CVE_MONEDA)
+  THEN
+  dbo.fnCalculaPesosC(@pCveEmpresa, @pAnoMes, m.F_OPERACION, (m.IMP_TRANSACCION / @k_fact_iva) * @k_iva, ch.CVE_MONEDA)
   ELSE    0
   END,
 --07 'IMND', Importe Neto Dólares

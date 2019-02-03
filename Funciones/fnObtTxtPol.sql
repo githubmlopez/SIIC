@@ -1,3 +1,6 @@
+USE ADMON01
+GO
+
 ALTER FUNCTION fnObtTxtPol (@pCveEmpresa varchar(4), @pSerie varchar(6), @pIdCxC int, @pIdItem int)
 RETURNS varchar(200)
 -- WITH EXECUTE AS CALLER

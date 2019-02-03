@@ -41,8 +41,8 @@ BEGIN
                                  CVE_F_MONEDA, IMP_F_NETO, TIPO_CAMBIO, TX_NOTA, IMP_PESOS, TX_NOTA_COBRANZA)
       SELECT @pAnoMes, @pCveEmpresa, f.SERIE, f.ID_CXC, f.F_OPERACION, c.ID_CLIENTE, c.NOM_CLIENTE, 
              dbo.fnArmaProducto120(f.ID_CONCILIA_CXC),
-             f.CVE_F_MONEDA, f.IMP_F_NETO, f.TIPO_CAMBIO, ' ', 
-		     dbo.fnCalculaPesos(f.F_OPERACION, f.IMP_F_NETO, f.CVE_F_MONEDA), f.TX_NOTA_COBRANZA
+             f.CVE_F_MONEDA, f.IMP_F_NETO, dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION), ' ', 
+		     dbo.fnCalculaPesosC(@pCveEmpresa, @pAnoMes, f.F_OPERACION, f.IMP_F_NETO, f.CVE_F_MONEDA), f.TX_NOTA_COBRANZA
       FROM CI_FACTURA f, CI_VENTA v, CI_CLIENTE c     
       WHERE f.CVE_EMPRESA         = @pCveEmpresa        AND
 	        f.SIT_CONCILIA_CXC    = @k_no_concilida     AND

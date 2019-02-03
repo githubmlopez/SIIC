@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spConcSatFact
 END
 GO
---EXEC spConcSatFact 'CU','MARIO', '201811',1,1,' ',' '
+--EXEC spConcSatFact 'CU','MARIO', '201812',1,2,' ',' '
 CREATE PROCEDURE [dbo].[spConcSatFact]
 (
 --@pIdProceso       numeric(9),
@@ -47,12 +47,17 @@ BEGIN
 		  @imp_f_neto      numeric(16,2),
 		  @situacion       varchar(2)
 
-  DECLARE @k_legada        varchar(6)   = 'LEGACY',
+  DECLARE @k_verdadero     bit          = 1,
+          @k_falso         bit          = 0,
+          @k_legada        varchar(6)   = 'LEGACY',
 		  @k_activa        varchar(1)   = 'A',
 		  @k_cancelada     varchar(1)   = 'C',
 		  @k_error         varchar(1)   = 'E',
+		  @k_warning       varchar(1)   = 'W',
 		  @k_efcomp_ing    varchar(1)   = 'I',
-		  @k_efcomp_rec    varchar(1)   = 'P'
+		  @k_efcomp_rec    varchar(1)   = 'P',
+		  @k_no_conc       varchar(2)   = 'NC',
+		  @k_conciliado    varchar(2)   = 'CO'
 -------------------------------------------------------------------------------
 -- Conciliación de Facturas 
 -------------------------------------------------------------------------------
@@ -69,9 +74,13 @@ BEGIN
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
 -----------------------------------------------------------------------------------------------------
 
-  DELETE FROM CI_SAT_FACTURA WHERE ID_CONCILIA_CXC = 0
+  DELETE FROM CI_SAT_FACTURA WHERE
+  ANO_MES_PROC = @pAnoPeriodo  AND
+  B_AUTOMATICO = @k_falso
+  
   UPDATE CI_SAT_FACTURA SET ID_CONCILIA_CXC = NULL WHERE 
-  ID_CONCILIA_CXC IS NOT NULL
+  ANO_MES_PROC = @pAnoPeriodo  AND
+  B_AUTOMATICO = @k_verdadero
 
   INSERT  @TFacturas (RFC_CLIENTE, NOM_CLIENTE, F_OPERACION, ID_CONCILIA_CXC, IMP_F_NETO, SITUACION) 
   SELECT  RFC_CLIENTE, NOM_CLIENTE, F_OPERACION, ID_CONCILIA_CXC, IMP_F_NETO, SIT_TRANSACCION
@@ -97,7 +106,7 @@ BEGIN
 
   SET @NunRegistros = @@ROWCOUNT
 -------------------------------------------------------------------------------------
-
+--  	SELECT ' num reg ' + CONVERT(varchar(12), @NunRegistros)
   SET @RowCount     = 1
   WHILE @RowCount <= @NunRegistros
   BEGIN
@@ -113,12 +122,14 @@ BEGIN
 	ID_CONCILIA_CXC IS NULL          AND
 	EFECTO_COMPROB  =  @k_efcomp_ing AND
     dbo.fnArmaAnoMes (YEAR(F_EMISION), MONTH(F_EMISION))  =  @pAnoPeriodo
-
+--	SELECT ' ID UNICO ' + CONVERT(varchar(12), @id_unico)
 	BEGIN TRY
 
 	IF  ISNULL(@id_unico,' ') <> ' '
 	BEGIN
-      UPDATE CI_SAT_FACTURA SET ID_CONCILIA_CXC = @id_concilia_cxc WHERE ID_UNICO = @id_unico
+      UPDATE CI_SAT_FACTURA SET ID_CONCILIA_CXC = @id_concilia_cxc,
+	                            SIT_CONCILIA    = @k_conciliado
+	  WHERE ID_UNICO = @id_unico
 	END
 	ELSE
 	BEGIN
@@ -136,7 +147,10 @@ BEGIN
 	  EFECTO_COMPROB,
 	  ESTATUS,
 	  F_CANCELACION,
-	  ID_CONCILIA_CXC) VALUES
+	  ID_CONCILIA_CXC,
+	  ANO_MES_PROC,
+	  SIT_CONCILIA,
+	  B_AUTOMATICO) VALUES
      (@id_concilia_cxc,
 	  @rfc_cliente,
 	  @nom_cliente,
@@ -149,7 +163,10 @@ BEGIN
 	  ' ',
 	  ' ',
 	  NULL,
-	  0
+	  0,
+	  @pAnoPeriodo,
+	  @k_no_conc,
+	  @k_verdadero
 	 )
       SET @RowCount     =   @RowCount + 1
     END
@@ -159,22 +176,23 @@ BEGIN
     BEGIN CATCH
       SET  @pError    =  'Error Conciliacion SAT vs Facturas'
       SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
-      SELECT @pMsgError
+--      SELECT @pMsgError
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
     END CATCH
 
-    EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @RowCount
     SET @RowCount     =  @RowCount + 1
+    EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @RowCount
+ 
   END  			
 
-  IF  EXISTS (SELECT 1 FROM CI_SAT_FACTURA WHERE ID_CONCILIA_CXC = 0 OR
-              ID_CONCILIA_CXC IS NULL)
+  IF  EXISTS (SELECT 1 FROM CI_SAT_FACTURA WHERE SIT_CONCILIA = @k_no_conc  AND
+              EFECTO_COMPROB <> @k_efcomp_rec)
   BEGIN
 	SET  @num_reg_proc = @num_reg_proc + 1 
 	SET  @pError    =  'Existen diferencias entre SAT y  FACTURAS '
---  SELECT @pError
-    SET  @pMsgError =  LTRIM(@pError + '==> ' + ERROR_MESSAGE())
-    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+--    SELECT @pError
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
   END
 
 END

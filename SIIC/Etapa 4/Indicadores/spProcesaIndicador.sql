@@ -8,7 +8,7 @@ GO
 
 SET NOCOUNT ON
 GO
---EXEC spProcesaIndicador 'CU','MLOPEZ','201804',42,1134, ' ', ' '
+--EXEC spProcesaIndicador 'CU','MLOPEZ','201812',78,1134, ' ', ' '
 --DROP PROCEDURE spProcesaIndicador
 ALTER PROCEDURE [dbo].[spProcesaIndicador] @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                            @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
@@ -28,7 +28,6 @@ BEGIN
            @imp_ind_cuenta     numeric(16,2) = 0,
 		   @cve_tipo_indicador varchar(2),
 		   @cve_indicador      varchar(10)
-
   
   SELECT  @cve_indicador =  CVE_INDICADOR, @cve_tipo_indicador = CVE_TIPO_INDICADOR  FROM  CI_INDICADOR	WHERE
           CVE_EMPRESA  =  @pCveEmpresa  AND

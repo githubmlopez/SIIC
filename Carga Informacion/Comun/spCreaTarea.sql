@@ -8,11 +8,11 @@ SET NOCOUNT ON
 GO
 IF  EXISTS( SELECT 1 FROM CARGADOR.sys.procedures WHERE Name =  'spCreaTarea')
 BEGIN
-  DROP  PROCEDURE spCreaTarea
+  DROP  PROCEDURE [dbo].[spCreaTarea]
 END
 GO
 --EXEC spCreaTarea 1,'CU','MARIO',0, ' ',' '
-CREATE PROCEDURE spCreaTarea
+CREATE PROCEDURE [dbo].[spCreaTarea]
 (
 @pIdProceso     numeric(9),
 @pIdCliente     int,

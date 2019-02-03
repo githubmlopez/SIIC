@@ -11,7 +11,7 @@ GO
 -- Proceso que valida integridad de la información en general
 --EXEC spLanzaMonitor 'CU', 'MLOPEZ', '201805', 'E0M1INMES', 0
 -- Proceso que compara la facturación contra el CONTPAQ y verifica los saldos bancarios
---EXEC spLanzaMonitor 'CU', 'MLOPEZ', '201805', 'E1M1RERP', 0
+--EXEC spLanzaMonitor 'CU', 'MLOPEZ', '201812', 'E1M1RERP', 0
 -- Porceso que genera las transacciones previo a la generación de pólizas
 -- El proceso incluye una validación de la información generada
 --EXEC spLanzaMonitor 'CU', 'MLOPEZ', '201809', 'E2M1GTRAN',0

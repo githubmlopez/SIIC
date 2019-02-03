@@ -6,7 +6,7 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE PROCEDURE spFactCancelada  @pCveEmpresa  varchar(4), @pFInicial date, @pFFinal date, @pAnoMes varchar(6)
+ALTER PROCEDURE spFactCancelada  @pCveEmpresa  varchar(4), @pFInicial date, @pFFinal date, @pAnoMes varchar(6)
 AS
 BEGIN
   DECLARE  @k_activa          varchar(1)  =  'A',
@@ -30,7 +30,7 @@ BEGIN
    CONVERT(VARCHAR(12),f.IMP_F_IVA) AS IMP_F_IVA,
    CONVERT(VARCHAR(12),f.IMP_F_NETO) AS IMP_F_NETO,
    f.CVE_F_MONEDA,
-   CONVERT(VARCHAR(12),dbo.fnCalculaPesos(f.F_OPERACION, f.IMP_F_NETO, CVE_F_MONEDA)) AS IMP_PESOS,  
+   CONVERT(VARCHAR(12),dbo.fnCalculaPesosC(@pCveEmpresa, @pAnoMes, f.F_OPERACION, f.IMP_F_NETO, CVE_F_MONEDA)) AS IMP_PESOS,  
    i.IMP_BRUTO_ITEM, f.SIT_TRANSACCION, F_CANCELACION   
    from CI_FACTURA f, CI_ITEM_C_X_C i, CI_SUBPRODUCTO s, CI_PRODUCTO p, CI_VENTA v, CI_VENDEDOR ve, CI_CLIENTE c     
    where dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION))  <= @pAnoMes AND 

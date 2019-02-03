@@ -121,7 +121,15 @@ BEGIN
 		 CVE_TIPO_NOMINA =  @pCveTipoNomina AND
 		 ANO_PERIODO     =  @pAnoPeriodo
    
-  SET  @imp_sdi_fijo  =  @pSdoEmpleado * @f_act_integracion      
+  SET  @imp_sdi_fijo  =  (@pSdoEmpleado /
+ (SELECT  NUM_DIAS_INT
+  FROM    NO_INF_EMP_PER      WHERE
+		  ANO_PERIODO       =  @pAnoPeriodo    AND
+	      ID_CLIENTE        =  @pIdCliente     AND
+		  CVE_EMPRESA       =  @pCveEmpresa    AND
+ 		  ID_EMPLEADO       =  @pIdEmpleado    AND
+		  CVE_TIPO_NOMINA   =  @pCveTipoNomina)) * 
+  @f_act_integracion      
   SET  @imp_sbc_fijo  =  @imp_sdi_fijo / @dias_mes_periodo    
   SET  @imp_sbc_mixto =  @sdo_dia_bim_ant +  @imp_sbc_fijo
 

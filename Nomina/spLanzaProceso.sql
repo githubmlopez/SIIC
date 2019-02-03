@@ -71,7 +71,6 @@ BEGIN
 
   IF  @sit_periodo  =  @k_abierto   
   BEGIN
-
     SET @sql = N'EXEC ' + @pStoreProc +  
     N' @IdProceso_p, @IdTarea_p, @CodigoUsuario_p, @IdCliente_p,' +
     N'@CveEmpresa_p, @CveAplicacion_p, @CveTipoNomina_p, @AnoPeriodo_p,' +

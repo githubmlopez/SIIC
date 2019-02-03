@@ -14,7 +14,7 @@ BEGIN
   DROP  PROCEDURE spLanzaMonitor
 END
 GO
---EXEC spLanzaMonitor 0,'MARIO',1,'CU','CARGAINF','CARGASAT','201811',' ',' '
+--EXEC dbo.spLanzaMonitor 0,'MARIO',1,'CU','CARGAINF','CARGASAT','201812',' ',' '
 CREATE PROCEDURE [dbo].[spLanzaMonitor]
 (
 @pIdProceso       numeric(9),
@@ -100,7 +100,7 @@ BEGIN
 		(@pIdProceso       = @k_todos_proc       OR
 		 mp.ID_PROCESO     = @pIdProceso) ORDER BY mp.SEQ_EJECUCION
 
-  SELECT * FROM @TProcMonitor
+--  SELECT * FROM @TProcMonitor
 
   SET @NunRegistros = @@ROWCOUNT
   SET @RowCount     = 1
@@ -112,7 +112,7 @@ BEGIN
 	       @store_procedure = STORE_PROCEDURE	
     FROM   @TProcMonitor
     WHERE  RowID = @RowCount
-    SELECT 'mon ', CONVERT(VARCHAR(5), @id_proceso)
+--    SELECT 'mon ', CONVERT(VARCHAR(5), @id_proceso)
  
     EXEC  spLanzaProceso
 	@id_proceso,

@@ -9,7 +9,7 @@ GO
 SET NOCOUNT ON
 GO
 --exec spConCuCoCxc 'CU', '201804'
-CREATE PROCEDURE [dbo].[spConCuCoPagAnt]   @pCveEmpresa varchar(4), @pAnoMes  varchar(6)
+ALTER PROCEDURE [dbo].[spConCuCoPagAnt]   @pCveEmpresa varchar(4), @pAnoMes  varchar(6)
 AS
 BEGIN
   SELECT CVE_CHEQUERA AS 'Cve. Moneda',

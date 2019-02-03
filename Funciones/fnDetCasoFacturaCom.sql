@@ -1,3 +1,5 @@
+USE ADMON01
+GO
 CREATE PROCEDURE spDetCasoFacturaCom (@id_concilia_cxc int, @pcve_liq_fac varchar(1))
 -- WITH EXECUTE AS CALLER
 AS

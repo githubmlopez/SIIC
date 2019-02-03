@@ -25,15 +25,22 @@ CREATE PROCEDURE [dbo].[spRegIsr]
 @pAnoPeriodo      varchar(6),
 @pIdEmpleado      int,
 @pZona            int,
+@pCvePuesto       varchar(15),
 @pCveTipoEmpleado varchar(2),
 @pCveTipoPercep   varchar(2),
 @pFIngreso        date,
 @pSueldoMensual   numeric(16,2),
+@pIdRegFiscal     int,
+@pIdTipoCont      int,
+@pIdBanco         int,
+@pIdJorLab        int,
+@pIdRegContrat    int,
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
 AS
 BEGIN
+--  SELECT 'spRegIsr'
   DECLARE  @cve_concepto      varchar(4)    =  ' ',
            @imp_concepto      int           =  0,
 		   @tot_ing_grab      numeric(16,2) =  0,
@@ -44,8 +51,11 @@ BEGIN
 
   DECLARE  @k_verdadero       bit           =  1,
 		   @k_falso           bit           =  0,
-		   @k_cve_isr         varchar(4)    =  '09',
-		   @k_cve_subsidio    varchar(4)    =  '10'
+		   @k_error           varchar(1)    =  'E',
+		   @k_cve_isr         varchar(4)    =  '0001',
+		   @k_cve_subsidio    varchar(4)    =  '0014'
+
+  BEGIN TRY
 
   DELETE FROM NO_PRE_NOMINA  WHERE 
   ANO_PERIODO  =  @pAnoPeriodo  AND
@@ -125,5 +135,22 @@ BEGIN
   ' ',
   @pError OUT,
   @pMsgError OUT
+
+  END TRY
+
+  BEGIN CATCH
+    SET  @pError    =  'E- Cal. ISR ' + CONVERT(VARCHAR(10), @pIdEmpleado) + '(P)' + ERROR_PROCEDURE()  
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento 
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_error,
+    @pError,
+    @pMsgError
+  END CATCH
 
 END

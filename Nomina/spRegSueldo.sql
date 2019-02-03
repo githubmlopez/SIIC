@@ -25,20 +25,30 @@ CREATE PROCEDURE [dbo].[spRegSueldo]
 @pAnoPeriodo      varchar(6),
 @pIdEmpleado      int,
 @pZona            int,
+@pCvePuesto       varchar(15),
 @pCveTipoEmpleado varchar(2),
 @pCveTipoPercep   varchar(2),
 @pFIngreso        date,
 @pSueldoMensual   numeric(16,2),
+@pIdRegFiscal     int,
+@pIdTipoCont      int,
+@pIdBanco         int,
+@pIdJorLab        int,
+@pIdRegContrat    int,
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
 AS
 BEGIN
+--  SELECT 'spRegSueldo'
   DECLARE  @gpo_transaccion   int         =  0
 
   DECLARE  @k_verdadero       bit         =  1,
 		   @k_falso           bit         =  0,
-		   @k_cve_sdo         varchar(4)  =  '04'
+		   @k_error           varchar(1)  =  'E',
+		   @k_cve_sdo         varchar(4)  =  '0011'
+
+  BEGIN TRY
 
   DELETE FROM NO_PRE_NOMINA  WHERE 
   ANO_PERIODO  =  @pAnoPeriodo  AND
@@ -46,7 +56,6 @@ BEGIN
   CVE_EMPRESA  =  @pCveEmpresa  AND
   ID_EMPLEADO  =  @pIdEmpleado  AND
   CVE_CONCEPTO IN (@k_cve_sdo)
-
 
   EXEC spInsPreNomina  
   @pIdProceso,
@@ -67,4 +76,22 @@ BEGIN
   ' ',
   @pError OUT,
   @pMsgError OUT
+
+  END TRY
+
+  BEGIN CATCH
+    SET  @pError    =  'E- Reg. Sueldo ' + CONVERT(VARCHAR(10), @pIdEmpleado) + '(P)' + ERROR_PROCEDURE() 
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento 
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_error,
+    @pError,
+    @pMsgError
+  END CATCH
+
 END

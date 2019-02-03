@@ -168,7 +168,7 @@ BEGIN
   
   IF  @pDiasBimAnt  =  0
   BEGIN
-    SET  @pError    =  'Dias Bim. Ant en ceros ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
+    SET  @pError    =  'Dias Bim. Ant en ceros ' + '(P)' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento
 	  @pIdProceso,

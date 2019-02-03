@@ -1,4 +1,7 @@
-CREATE FUNCTION fnObtTipoCamb (@pf_operacion date)
+USE ADMON01
+GO
+
+ALTER FUNCTION fnObtTipoCamb (@pf_operacion date)
 RETURNS numeric(8,4)
 -- WITH EXECUTE AS CALLER
 AS

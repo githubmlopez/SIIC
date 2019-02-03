@@ -7,7 +7,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-CREATE PROCEDURE spPrepPagoParcial  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
+ALTER PROCEDURE spPrepPagoParcial  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                    @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 	 							   @pMsgError varchar(400) OUT
 AS
@@ -61,7 +61,8 @@ BEGIN
 			  	   SERIE        =  @serie        AND
 				   ID_CXC       =  @id_cxc
 	
-      EXEC  spAcumMovtosBanc  @id_concilia_cxc, @pAnoMes,
+      EXEC  spAcumMovtosBanc  @pCveEmpresa,
+	                          @id_concilia_cxc, @pAnoMes,
 	                          @imp_acum_b_Peso OUT, @imp_acum_i_peso,
                               @imp_acum_n_peso OUT, @imp_acum_b_dolar OUT,
 						      @imp_acum_i_dolar OUT, @imp_acum_n_dolar	OUT, @cve_moneda OUT	  

@@ -4,7 +4,7 @@ SET ANSI_NULLS ON
 GO
 SET NOCOUNT ON
 GO
-create FUNCTION [dbo].[fnCveCatalogo] (@pUrlApi varchar(120))
+ALTER FUNCTION [dbo].[fnCveCatalogo] (@pUrlApi varchar(120))
 RETURNS varchar(80)
 AS
 BEGIN

@@ -1,3 +1,5 @@
+USE ADMON01
+GO 
 ALTER FUNCTION fnCalculaPesos (@pf_real_pago date, @pImporte numeric(16,2), @pcve_moneda varchar(4))
 RETURNS numeric(18,2)
 -- WITH EXECUTE AS CALLER

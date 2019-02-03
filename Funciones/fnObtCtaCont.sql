@@ -1,4 +1,7 @@
-CREATE FUNCTION fnObtCtaCont (@pIdCliente int, @pCveTipoCuenta varchar(1))
+USE ADMON01
+GO
+
+ALTER FUNCTION fnObtCtaCont (@pIdCliente int, @pCveTipoCuenta varchar(1))
 RETURNS varchar(30)
 -- WITH EXECUTE AS CALLER
 AS

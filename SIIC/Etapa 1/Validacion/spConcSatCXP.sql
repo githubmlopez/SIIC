@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spConcSatCXP
 END
 GO
---EXEC spConcSatCXP 'CU','MARIO', '201811',1,1,' ',' '
+--EXEC spConcSatCXP 'CU','MARIO', '201812',1,2,' ',' '
 CREATE PROCEDURE [dbo].[spConcSatCXP]
 (
 --@pIdProceso       numeric(9),
@@ -44,7 +44,7 @@ BEGIN
   DECLARE @rfc_proveedor   varchar(15),
           @f_operacion     date,
 		  @nom_proveedor   varchar(100),
-		  @id_concilia_cxp int,
+		  @id_cxp          int,
 		  @id_cxp_det      int,
 		  @imp_f_neto      numeric(16,2),
 		  @situacion       varchar(2)
@@ -53,9 +53,15 @@ BEGIN
 		  @k_activa        varchar(1)   = 'A',
 		  @k_cancelada     varchar(1)   = 'C',
 		  @k_error         varchar(1)   = 'E',
+		  @k_warning       varchar(1)   = 'W',
 		  @k_efcomp_ing    varchar(1)   = 'I',
 		  @k_efcomp_rec    varchar(1)   = 'P',
-		  @k_verdadero     varchar(1)   = 1
+		  @k_verdadero     varchar(1)   = 1,
+		  @k_falso         varchar(1)   = 0,
+		  @k_no_conc       varchar(2)   = 'NC',
+		  @k_conciliado    varchar(2)   = 'CO',
+		  @k_f_inicial     date         = '2018-12-01'
+
 -------------------------------------------------------------------------------
 -- Conciliación de Facturas 
 -------------------------------------------------------------------------------
@@ -64,7 +70,7 @@ BEGIN
            RFC_PROVEEDOR    varchar(15),
 		   NOM_PROVEEDOR    varchar(100),
 		   F_OPERACION      date,
-		   ID_CONCILIA_CXP  int,
+		   ID_CXP           int,
 		   ID_CXP_DET       int,
 		   IMP_F_NETO       numeric(16,2),
 		   SITUACION        varchar(2))
@@ -73,56 +79,65 @@ BEGIN
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
 -----------------------------------------------------------------------------------------------------
 
-  DELETE FROM CI_SAT_CXP WHERE ID_CONCILIA_CXP = 0
-  UPDATE CI_SAT_CXP SET ID_CONCILIA_CXP = NULL WHERE 
-  ID_CONCILIA_CXP IS NOT NULL
+  DELETE FROM CI_SAT_CXP WHERE
+  ANO_MES_PROC =  @pAnoPeriodo  AND
+  B_AUTOMATICO =  @k_falso 
 
-  INSERT  @TCXP (RFC_PROVEEDOR, NOM_PROVEEDOR, F_OPERACION, ID_CONCILIA_CXP, ID_CXP_DET,
+  UPDATE CI_SAT_CXP SET ID_CXP = NULL, ID_CXP_DET = NULL
+  WHERE 
+  ANO_MES_PROC =  @pAnoPeriodo  AND
+  B_AUTOMATICO =  @k_verdadero 
+
+  INSERT  @TCXP (RFC_PROVEEDOR, NOM_PROVEEDOR, F_OPERACION, ID_CXP, ID_CXP_DET,
                  IMP_F_NETO, SITUACION) 
-  SELECT  p.RFC, p.NOM_PROVEEDOR, c.F_CAPTURA, c.ID_CONCILIA_CXP, i.ID_CXP_DET, c.IMP_NETO , c.SIT_C_X_P
-  FROM    CI_CUENTA_X_PAGAR c, CI_PROVEEDOR p, CI_ITEM_C_X_P i
-  WHERE   c.CVE_EMPRESA           =  @pCveEmpresa     AND
-          c.CVE_EMPRESA           =  i.CVE_EMPRESA    AND
-		  c.ID_CXP                =  i.ID_CXP         AND
-          c.ID_PROVEEDOR          =  p.ID_PROVEEDOR   AND
-         (dbo.fnArmaAnoMes (YEAR(c.F_CAPTURA), MONTH(c.F_CAPTURA))  = @pAnoPeriodo AND c.SIT_C_X_P = @k_activa) AND
+  SELECT  p.RFC, p.NOM_PROVEEDOR, c.F_CAPTURA, c.ID_CXP, 0, c.IMP_NETO , c.SIT_C_X_P
+  FROM    CI_CUENTA_X_PAGAR c, CI_PROVEEDOR p
+  WHERE   c.CVE_EMPRESA   =  @pCveEmpresa     AND
+          c.ID_PROVEEDOR  =  p.ID_PROVEEDOR   AND
+          c.F_CAPTURA    >=  @k_f_inicial     AND  
+  		  dbo.fnArmaAnoMes (YEAR(c.F_CAPTURA), MONTH(c.F_CAPTURA))  = @pAnoPeriodo AND               
+		  c.SIT_C_X_P = @k_activa             AND
+		  c.B_FACTURA = @k_verdadero          AND
 		  NOT EXISTS 
 		  (SELECT 1 FROM CI_ITEM_C_X_P i2 WHERE 
-		   i.CVE_EMPRESA = i2.CVE_EMPRESA  AND
-		   i.ID_CXP      = i2.ID_CXP       AND
+		   c.CVE_EMPRESA = i2.CVE_EMPRESA  AND
+		   c.ID_CXP      = i2.ID_CXP       AND
 		   i2.B_FACTURA  = @k_verdadero)
   UNION
-  SELECT  i.RFC, SUBSTRING(i.TX_NOTA,1,120), c.F_CAPTURA, c.ID_CONCILIA_CXP, i.ID_CXP_DET,
+  SELECT  i.RFC, SUBSTRING(i.TX_NOTA,1,120), c.F_CAPTURA, c.ID_CXP, i.ID_CXP_DET,
   i.IMP_BRUTO + i.IVA, @k_activa
   FROM    CI_CUENTA_X_PAGAR c, CI_ITEM_C_X_P i
   WHERE   c.CVE_EMPRESA  =  @pCveEmpresa  AND
-          c.CVE_EMPRESA           =  i.CVE_EMPRESA    AND
-		  c.ID_CXP                =  i.ID_CXP         AND
+          c.CVE_EMPRESA  =  i.CVE_EMPRESA AND
+		  c.ID_CXP       =  i.ID_CXP      AND
           i.B_FACTURA    =  @k_verdadero  AND
-         (dbo.fnArmaAnoMes (YEAR(c.F_CAPTURA), MONTH(c.F_CAPTURA))  = @pAnoPeriodo AND c.SIT_C_X_P = @k_activa) 
+          c.F_CAPTURA    >  @k_f_inicial  AND
+  		  dbo.fnArmaAnoMes (YEAR(c.F_CAPTURA), MONTH(c.F_CAPTURA))  = @pAnoPeriodo AND               
+		  c.SIT_C_X_P = @k_activa
 
   SET @NunRegistros = @@ROWCOUNT
 -------------------------------------------------------------------------------------
---  SELECT * FROM @TCXP
+  SELECT * FROM @TCXP
   SET @RowCount     = 1
   WHILE @RowCount <= @NunRegistros
   BEGIN
     SELECT @rfc_proveedor = RFC_PROVEEDOR, @nom_proveedor = NOM_PROVEEDOR,
-	       @f_operacion = F_OPERACION, @id_concilia_cxp = ID_CONCILIA_CXP, @id_cxp_det = ID_CXP_DET,
+	       @f_operacion = F_OPERACION, @id_cxp = ID_CXP, @id_cxp_det = ID_CXP_DET,
 		   @imp_f_neto = IMP_F_NETO, @situacion = SITUACION
-	FROM   @TCXP  WHERE  RowID = @RowCount
+	FROM   @TCXP  WHERE  RowID = @RowCount 
 
-	SELECT ' RFC ' + @rfc_proveedor
-	SELECT ' IMP ' + CONVERT(VARCHAR(16),@imp_f_neto)
-	SELECT ' SIT ' + @situacion 
+	--SELECT ' RFC ' + @rfc_proveedor
+	--SELECT ' IMP ' + CONVERT(VARCHAR(16),@imp_f_neto)
+	--SELECT ' SIT ' + @situacion 
+
+	SET @id_unico = ' '
 
     SELECT TOP(1) @id_unico = ID_UNICO FROM CI_SAT_CXP  WHERE
 	RFC_EMISOR      =  @rfc_proveedor  AND
-	IMP_FACTURA     =  @imp_f_neto    AND
-	ESTATUS         =  @situacion     AND
-	ID_CONCILIA_CXP IS NULL           AND
-   	EFECTO_COMPROB  =  @k_efcomp_ing    AND
-     dbo.fnArmaAnoMes (YEAR(F_EMISION), MONTH(F_EMISION))  =  @pAnoPeriodo
+	IMP_FACTURA     =  @imp_f_neto     AND
+	ESTATUS         =  @situacion      AND
+	ID_CXP          IS NULL            AND
+   	EFECTO_COMPROB  =  @k_efcomp_ing   
 
 	SELECT ' ID ' + @id_unico 
 
@@ -130,11 +145,42 @@ BEGIN
 
 	IF  ISNULL(@id_unico,' ') <> ' '
 	BEGIN
-      UPDATE CI_SAT_CXP SET ID_CONCILIA_CXP = @id_concilia_cxp WHERE ID_UNICO = @id_unico
-	END
+      UPDATE CI_SAT_CXP
+	  SET ID_CXP       = @id_cxp,
+	      ID_CXP_DET   = @id_cxp_det,
+		  SIT_CONCILIA = @k_conciliado
+	  WHERE ID_UNICO = @id_unico
+
+      IF  @id_cxp_det = 0 
+	  BEGIN
+	    IF  EXISTS (SELECT 1 FROM CI_SAT_CXP WHERE 
+		            ID_CXP       =  @id_cxp  AND
+					ID_CXP_DET   = 0         AND
+					B_AUTOMATICO = @k_falso)
+		BEGIN
+          UPDATE CI_SAT_CXP
+	      SET ID_CXP       = @id_cxp,
+	          ID_CXP_DET   = 0,
+		      SIT_CONCILIA = @k_conciliado
+		END
+	  END
+	  ELSE
+	  BEGIN
+	  	IF  EXISTS (SELECT 1 FROM CI_SAT_CXP WHERE 
+		            ID_CXP     = @id_cxp  AND
+					ID_CXP_DET = 0         AND
+					B_AUTOMATICO = @k_falso)
+		BEGIN
+          UPDATE CI_SAT_CXP
+	      SET ID_CXP       = @id_cxp,
+	          ID_CXP_DET   = 0,
+		  SIT_CONCILIA = @k_conciliado
+	    END
+	   END
+      END 
 	ELSE
 	BEGIN
-	  SELECT 'INSERTO'
+--	  SELECT 'INSERTO'
 	  INSERT  CI_SAT_CXP  
 	 (
 	  ID_UNICO,
@@ -149,8 +195,12 @@ BEGIN
 	  EFECTO_COMPROB,
 	  ESTATUS,
 	  F_CANCELACION,
-	  ID_CONCILIA_CXP) VALUES
-     (CONVERT(VARCHAR(10),@id_concilia_cxp) + '-' + CONVERT(VARCHAR(10),@id_cxp_det),
+	  ID_CXP,
+	  ID_CXP_DET,
+	  SIT_CONCILIA,
+	  ANO_MES_PROC,
+	  B_AUTOMATICO) VALUES
+     (CONVERT(VARCHAR(10),@id_cxp) + '-' + CONVERT(VARCHAR(10),@id_cxp_det),
 	  @rfc_proveedor,
 	  @nom_proveedor,
 	  ' ',
@@ -162,7 +212,11 @@ BEGIN
 	  ' ',
 	  @situacion,
 	  NULL,
-	  0
+	  @id_cxp,
+	  @id_cxp_det,
+	  @k_no_conc,
+	  @pAnoPeriodo,
+	  @k_falso
 	 )
     END
 
@@ -174,20 +228,17 @@ BEGIN
       SELECT @pMsgError
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
     END CATCH
-
-    EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @num_reg_proc
     SET @RowCount     =  @RowCount + 1
-
+    EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @RowCount
   END  			
 
-  IF  EXISTS (SELECT 1 FROM CI_SAT_CXP WHERE ID_CONCILIA_CXP = 0 OR
-              ID_CONCILIA_CXP IS NULL)
+  IF  EXISTS (SELECT 1 FROM CI_SAT_CXP WHERE SIT_CONCILIA = @k_no_conc AND
+              EFECTO_COMPROB <> @k_efcomp_rec)
   BEGIN
 	SET  @num_reg_proc = @num_reg_proc + 1 
 	SET  @pError    =  'Existen diferencias entre SAT y CXP '
-    SELECT @pError
-    SET  @pMsgError =  LTRIM(@pError + '==> ' + ERROR_MESSAGE())
---    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
   END
 
 END

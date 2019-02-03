@@ -11,7 +11,7 @@ BEGIN
   DROP  PROCEDURE spCargaFile
 END
 GO
--- exec spCargaFile 1,1,'MARIO',1,'CU','CARGAINF','201811',' ',' '
+-- exec spCargaFile 3,1,'MARIO',1,'CU','CARGAINF','201811',' ',' '
 CREATE PROCEDURE [dbo].[spCargaFile] 
 (
 @pIdProceso     numeric(9),	
@@ -75,6 +75,7 @@ BEGIN
 
   DECLARE @k_csv            varchar(3)  =  'CSV',
           @k_ascii          varchar(3)  =  'TXT',
+		  @k_directorio     varchar(3)  =  'DIR',
 		  @k_verdadero      bit         =  1
 
   DECLARE @sql              varchar(max)
@@ -118,8 +119,24 @@ BEGIN
       SET  @sql  =  
      'BULK INSERT #FILEP FROM ' + char(39) + @pathcalc + char(39) + ' WITH (DATAFILETYPE =' + char(39) + 'CHAR' + char(39) +
      ',' + 'CODEPAGE = ' + char(39) + 'ACP' + char(39) + ')'
+      EXEC (@sql)
     END
-    EXEC (@sql)
+	ELSE
+	BEGIN
+      IF  @cve_tipo_archivo IN (@k_directorio)
+      BEGIN
+        EXEC spCargaDir
+	    @pIdProceso,	
+        @pIdTarea,
+        @pCodigoUsuario,
+        @pIdCliente,
+        @pCveEmpresa,
+        @pCveAplicacion,
+		@pathcalc,
+		@pError OUT,
+        @pMsgError OUT
+      END
+	END
 
     INSERT INTO  #FILE (Rowfile)
     SELECT Rowfile FROM #FILEP
@@ -139,9 +156,7 @@ BEGIN
 	  END
       SET @RowCount      = @RowCount + 1
     END
-
---    SELECT * FROM #FILE
-
+ 
 ------------------------------------------------------------------------------
 -- Procesa Bloques de Cada Formato
 -------------------------------------------------------------------------------
@@ -223,9 +238,9 @@ BEGIN
       @pError OUT,
       @pMsgError OUT
 
---	  SELECT CONVERT(VARCHAR(10), @res_ini)
---	  SELECT CONVERT(VARCHAR(10), @res_fin)
---	  SELECT 'spCargaBloqCsvTxt'
+	  --SELECT CONVERT(VARCHAR(10), @res_ini)
+	  --SELECT CONVERT(VARCHAR(10), @res_fin)
+	  --SELECT 'spCargaBloqCsvTxt'
 	  EXEC spCargaBloqCsvTxt 
       @pIdProceso,	
       @pIdTarea,
@@ -338,7 +353,6 @@ BEGIN
 	    BEGIN
 	      SET  @row_file  =  @row_fileo 
 	    END
---	  SELECT 'CICLO COL ' + CONVERT(VARCHAR(10), @num_columna )
         SELECT @tipo_campo = CVE_TIPO_CAMPO  FROM  FC_CARGA_IND  WHERE 
 	    ID_CLIENTE  = @pIdCliente  AND
         CVE_EMPRESA = @pCveEmpresa AND

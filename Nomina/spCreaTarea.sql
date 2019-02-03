@@ -79,6 +79,7 @@ BEGIN
     SET  @pError    =  'Error al insertar Tarea'
 	SET  @pMsgError =  @pError + '==> ' + ERROR_MESSAGE()
  	EXECUTE  spCreaTareaEvento
+    @pIdProceso,
     @pIdTarea,
     @pCodigoUsuario,
     @pIdCliente,
@@ -88,5 +89,5 @@ BEGIN
     @pError,
     @pMsgError
 
-  END CATCH
+   END CATCH
 END

@@ -26,18 +26,28 @@ CREATE PROCEDURE [dbo].[spRegPrimaVac]
 @pAnoPeriodo      varchar(6),
 @pIdEmpleado      int,
 @pZona            int,
+@pCvePuesto       varchar(15),
 @pCveTipoEmpleado varchar(2),
 @pCveTipoPercep   varchar(2),
 @pFIngreso        date,
 @pSueldoMensual   numeric(16,2),
+@pIdRegFiscal     int,
+@pIdTipoCont      int,
+@pIdBanco         int,
+@pIdJorLab        int,
+@pIdRegContrat    int,
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
 AS
 BEGIN
+--  SELECT 'spRegPrimaVac'
   DECLARE  @imp_concepto  numeric(16,2)
 
-  DECLARE  @k_prima_vac   varchar(4)  =  '11'
+  DECLARE  @k_prima_vac   varchar(4)    =  '0015',
+           @k_error       varchar(1)    =  'E'
+
+  BEGIN TRY
 
   DELETE FROM NO_PRE_NOMINA  WHERE 
   ANO_PERIODO  =  @pAnoPeriodo  AND
@@ -46,44 +56,51 @@ BEGIN
   ID_EMPLEADO  =  @pIdEmpleado  AND
   CVE_CONCEPTO IN (@k_prima_vac)
 
-  IF  ISNULL((SELECT DIAS_PRIMA_VAC FROM NO_INF_EMP_PER
-             WHERE  ID_CLIENTE      =  @pIdCliente     AND
-			        CVE_EMPRESA     =  @pCveEmpresa    AND
- 			        ID_EMPLEADO     =  @pIdEmpleado    AND
-					CVE_TIPO_NOMINA =  @pCveTipoNomina AND
-					ANO_PERIODO     =  @pAnoPeriodo),0) <> 0
-  BEGIN
-    SET  @imp_concepto  =  ISNULL((SELECT (PJE_PRIMA_VAC / 100)   FROM NO_EMPRESA
-                           WHERE  ID_CLIENTE  =  @pIdCliente  AND
-	                              CVE_EMPRESA =  @pCveEmpresa),0)  *
-                          (SELECT DIAS_PRIMA_VAC * (@pSueldoMensual / 30) FROM NO_INF_EMP_PER
-                           WHERE  ID_CLIENTE      =  @pIdCliente     AND
-						          CVE_EMPRESA     =  @pCveEmpresa    AND
- 						          ID_EMPLEADO     =  @pIdEmpleado    AND
-							      CVE_TIPO_NOMINA =  @pCveTipoNomina AND
-							      ANO_PERIODO     =  @pAnoPeriodo)
+  EXEC spCalPrimaVaca
+  @pIdCliente,
+  @pCveEmpresa,
+  @pIdEmpleado,
+  @pCveTipoNomina,
+  @pCveTipoPercep,
+  @pAnoPeriodo,
+  @pSueldoMensual,
+  @imp_concepto OUT
 
-    EXEC spInsPreNomina  
+  EXEC spInsPreNomina  
+  @pIdProceso,
+  @pIdTarea,
+  @pCodigoUsuario,
+  @pIdCliente,
+  @pCveEmpresa,
+  @pCveAplicacion,
+  @pCveTipoNomina,
+  @pAnoPeriodo,
+  @pIdEmpleado,
+  @k_prima_vac,
+  @imp_concepto,
+  0,
+  0,
+  0,
+  ' ',
+  ' ',
+  @pError OUT,
+  @pMsgError OUT
+
+  END TRY
+
+  BEGIN CATCH
+    SET  @pError    =  'E- Prima Vac ' + CONVERT(VARCHAR(10), @pIdEmpleado) + '(P)' + ERROR_PROCEDURE() 
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento 
     @pIdProceso,
     @pIdTarea,
     @pCodigoUsuario,
     @pIdCliente,
     @pCveEmpresa,
     @pCveAplicacion,
-    @pCveTipoNomina,
-    @pAnoPeriodo,
-    @pIdEmpleado,
-    @k_prima_vac,
-    @imp_concepto,
-    0,
-    0,
-    0,
-    ' ',
-    ' ',
-    @pError OUT,
-    @pMsgError OUT
-
-  END
-
+    @k_error,
+    @pError,
+    @pMsgError
+  END CATCH
 END
 

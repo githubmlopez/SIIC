@@ -34,20 +34,16 @@ BEGIN
            @id_empleado        int,                 
            @cve_tipo_nomina    varchar(2),          
            @zona               int,                 
+           @cve_puesto         varchar(15),
            @cve_tipo_empleado  varchar(2),          
            @cve_tipo_percep    varchar(2),          
-           @nom_empleado       varchar(100),        
            @f_ingreso          date,                
-           @curp               varchar(18),         
-           @rfc                varchar(13),         
-           @no_imss            varchar(11),         
            @sueldo_mensual     numeric(16,2),       
-           @cve_vendedor       varchar(4),          
-           @domicilio          varchar(200),        
-           @tel_celular        varchar(20),         
-           @tel_casa           varchar(20),         
-           @sit_empleado       varchar(1)    
-  
+           @id_reg_fiscal      numeric(16,2),
+           @id_tipo_cont       int,
+		   @id_banco           int,
+           @id_jor_lab         int,
+           @id_reg_contrat     int
 
   DECLARE  @NunRegistros      int   =  0, 
            @RowCount          int   =  0,
@@ -59,7 +55,8 @@ BEGIN
            @dias_incap        int   =  0
 
   DECLARE  @k_verdadero       bit   =  1,
-           @k_falso           bit   =  0
+           @k_falso           bit   =  0,
+		   @k_error           varchar(1) = 'W'
 
 -------------------------------------------------------------------------------
 -- Generacion de Empleados 
@@ -73,59 +70,56 @@ BEGIN
            CVE_EMPRESA          varchar(4),         
            ID_EMPLEADO          int,                 
            CVE_TIPO_NOMINA      varchar(2),          
-           ZONA                 int,                 
+           ZONA                 int,       
+		   CVE_PUESTO           varchar(15),          
            CVE_TIPO_EMPLEADO    varchar(2),          
            CVE_TIPO_PERCEP      varchar(2),          
-           NOM_EMPLEADO         varchar(100),        
            F_INGRESO            date,                
-           CURP                 varchar(18),         
-           RFC                  varchar(13),         
-           NO_IMSS              varchar(11),         
            SUELDO_MENSUAL       numeric(16,2),       
-           CVE_VENDEDOR         varchar(4),          
-           DOMICILIO            varchar(200),        
-           TEL_CELULAR          varchar(20),         
-           TEL_CASA             varchar(20),         
-           SIT_EMPLEADO         varchar(1))     
+           ID_REG_FISCAL        int,
+           ID_TIPO_CONT         int,
+		   ID_BANCO             int,
+           ID_JOR_LAB           int,
+           ID_REG_CONTRAT       int,
+           SALARIO_BASE         int,
+           SALARIO_DIARIO       int)
 
   INSERT  @TEmpleado(
   ID_CLIENTE,
   CVE_EMPRESA, 
   ID_EMPLEADO,
   CVE_TIPO_NOMINA,
-  ZONA,           
-  CVE_TIPO_EMPLEADO,
-  CVE_TIPO_PERCEP,
-  NOM_EMPLEADO,    
-  F_INGRESO,       
-  CURP,       
-  RFC,             
-  NO_IMSS,         
-  SUELDO_MENSUAL,  
-  CVE_VENDEDOR,    
-  DOMICILIO,       
-  TEL_CELULAR,     
-  TEL_CASA,        
-  SIT_EMPLEADO)     
+  ZONA,       
+  CVE_PUESTO,          
+  CVE_TIPO_EMPLEADO,          
+  CVE_TIPO_PERCEP,          
+  F_INGRESO,                
+  SUELDO_MENSUAL,       
+  ID_REG_FISCAL,
+  ID_TIPO_CONT,
+  ID_BANCO,
+  ID_JOR_LAB,
+  ID_REG_CONTRAT,
+  SALARIO_BASE,
+  SALARIO_DIARIO)
   SELECT
   ID_CLIENTE,
   CVE_EMPRESA, 
   ID_EMPLEADO,
   CVE_TIPO_NOMINA,
-  ZONA,           
-  CVE_TIPO_EMPLEADO,
-  CVE_TIPO_PERCEP,
-  NOM_EMPLEADO,    
-  F_INGRESO,       
-  CURP,       
-  RFC,             
-  NO_IMSS,         
-  SUELDO_MENSUAL,  
-  CVE_VENDEDOR,    
-  DOMICILIO,       
-  TEL_CELULAR,     
-  TEL_CASA,        
-  SIT_EMPLEADO  
+  ZONA,       
+  CVE_PUESTO,          
+  CVE_TIPO_EMPLEADO,          
+  CVE_TIPO_PERCEP,          
+  F_INGRESO,                
+  SUELDO_MENSUAL,       
+  ID_REG_FISCAL,
+  ID_TIPO_CONT,
+  ID_BANCO,
+  ID_JOR_LAB,
+  ID_REG_CONTRAT,
+  SALARIO_BASE,
+  SALARIO_DIARIO
   FROM    NO_EMPLEADO e
   WHERE
   e.ID_CLIENTE       = @pIdCliente      AND
@@ -143,19 +137,16 @@ BEGIN
            @id_empleado        =  ID_EMPLEADO,                 
            @cve_tipo_nomina    =  CVE_TIPO_NOMINA,          
            @zona               =  ZONA,                 
-           @cve_tipo_empleado  =  CVE_TIPO_EMPLEADO,      
+           @cve_puesto         =  CVE_PUESTO,
+           @cve_tipo_empleado  =  CVE_TIPO_EMPLEADO,        
            @cve_tipo_percep    =  CVE_TIPO_PERCEP,          
-           @nom_empleado       =  NOM_EMPLEADO,        
            @f_ingreso          =  F_INGRESO,                
-           @curp               =  CURP,         
-           @rfc                =  RFC,         
-           @no_imss            =  NO_IMSS,         
            @sueldo_mensual     =  SUELDO_MENSUAL,       
-           @cve_vendedor       =  CVE_VENDEDOR,          
-           @domicilio          =  DOMICILIO,        
-           @tel_celular        =  TEL_CELULAR,         
-           @tel_casa           =  TEL_CASA,         
-           @sit_empleado       =  SIT_EMPLEADO
+           @id_reg_fiscal      =  ID_REG_FISCAL,
+           @id_tipo_cont       =  ID_TIPO_CONT,
+		   @id_banco           =  ID_BANCO,
+           @id_jor_lab         =  ID_JOR_LAB,
+           @id_reg_contrat     =  ID_REG_CONTRAT
 		   FROM  @TEmpleado  WHERE  RowID  =  @RowCount   
 
     SELECT @store_proc = LTRIM(PARAMETRO)  FROM FC_GEN_PROCESO WHERE
@@ -163,17 +154,22 @@ BEGIN
 	CVE_EMPRESA    =  @pCveEmpresa AND
 	CVE_APLICACION =  @pCveAplicacion AND
 	ID_PROCESO     =  @pIdProceso
+
+    BEGIN TRY
 	
 	SET @sql = N'EXEC ' + @store_proc +  
 	N' @IdProceso_p,@IdTarea_p,@CveUsuario_p,@IdCliente_p,@CveEmpresa_p,@CveAplicacion_p,' + 
-	N'@CveTipoNomina_p,@AnoPeriodo_p,@IdEmpleado_p,@Zona_p,@CveTipoEmpleado_p,' +
-	N'@CveTipoPercep_p,@FIngreso_p,@SueldoMensual_p,@Error_p OUTPUT,@MsgError_p OUTPUT'
+	N'@CveTipoNomina_p,@AnoPeriodo_p,@IdEmpleado_p,@Zona_p,@CvePuesto_p,@CveTipoEmpleado_p,' +
+	N'@CveTipoPercep_p,@FIngreso_p,@SueldoMensual_p,@IdRegFiscal_p,@IdTipoCont_p, @IdBanco_p,' +
+	N'@IdJorLab_p, @IdRegContrat_p,@Error_p OUTPUT,@MsgError_p OUTPUT'
 	SET @parametros =
 	N' @IdProceso_p numeric(9,0),@IdTarea_p numeric(9,0),@CveUsuario_p varchar(10),' +
 	N'@IdCliente_p int,@CveEmpresa_p varchar(4),@CveAplicacion_p varchar(10),' +
 	N'@CveTipoNomina_p varchar(2),@AnoPeriodo_p varchar(6),@IdEmpleado_p int,' +
-	N'@Zona_p int,@CveTipoEmpleado_p varchar(2),' +
+	N'@Zona_p int,@CvePuesto_p varchar(15),@CveTipoEmpleado_p varchar(2),' +
 	N'@CveTipoPercep_p varchar(2),@FIngreso_p date,@SueldoMensual_p numeric(16,2),' +
+	N'@IdRegFiscal_p int,@IdTipoCont_p int, @IdBanco_p int,' +
+	N'@IdJorLab_p int, @IdRegContrat_p int, ' +
 	N'@Error_p varchar(80) OUTPUT,@MsgError_p varchar(400) OUTPUT'
 
 --	SELECT @sql
@@ -190,13 +186,31 @@ BEGIN
 	 @AnoPeriodo_p      = @pAnoPeriodo,   
 	 @IdEmpleado_p      = @id_empleado,
 	 @Zona_p            = @zona,
+	 @CvePuesto_p       = @cve_puesto,
 	 @CveTipoEmpleado_p = @cve_tipo_empleado,
 	 @CveTipoPercep_p   = @cve_tipo_percep, 
 	 @FIngreso_p        = @f_ingreso,
 	 @SueldoMensual_p   = @sueldo_mensual,
+	 @IdJorLab          = @id_jor_lab,
+	 @idRegContrat_p    = @id_reg_contrat,
 	 @Error_p           = @pError OUTPUT,
 	 @MsgError_p        = @pMsgError OUTPUT 
 
+	 END TRY
+	 BEGIN CATCH
+       SET  @pError    =  'E- Al Lanzar proc. ' + @store_proc + '(P)' + ERROR_PROCEDURE() 
+       SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+       EXECUTE spCreaTareaEvento 
+       @pIdProceso,
+       @pIdTarea,
+       @pCodigoUsuario,
+       @pIdCliente,
+       @pCveEmpresa,
+       @pCveAplicacion,
+       @k_error,
+       @pError,
+       @pMsgError
+     END CATCH
     SET @RowCount     = @RowCount + 1
   END
 

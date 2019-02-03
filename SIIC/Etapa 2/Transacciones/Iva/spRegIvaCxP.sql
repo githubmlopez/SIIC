@@ -48,6 +48,7 @@ BEGIN
 		   TX_NOTA_E         varchar(200),
 		   B_EMP_SERVICIO    bit)
 
+
   DELETE FROM CI_PERIODO_IVA WHERE ANO_MES  =  @pAnoMes  AND  CVE_TIPO =  @pCveTipo
 
 -----------------------------------------------------------------------------------------------------
@@ -83,7 +84,7 @@ BEGIN
 
 	IF  @cve_moneda  =  @k_dolar
 	BEGIN
-      SET  @imp_iva = @imp_iva * dbo.fnObtTipoCamb(@f_captura)
+      SET  @imp_iva = @imp_iva * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, @f_captura)
 	END
 
 	SET  @concepto =  ISNULL('CXP ' + CONVERT(VARCHAR(10),@id_cxp) + ' ==> ' + @tx_nota,' ')

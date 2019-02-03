@@ -5,7 +5,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
-IF  EXISTS( SELECT 1 FROM CARGAINF.sys.procedures WHERE Name =  'spObtCampoTxt')
+IF  EXISTS( SELECT 1 FROM CARGADOR.sys.procedures WHERE Name =  'spObtCampoTxt')
 BEGIN
   DROP  PROCEDURE spObtCampoTxt
 END

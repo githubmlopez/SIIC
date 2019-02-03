@@ -9,7 +9,7 @@ SET NOCOUNT ON
 GO
 
 --DROP PROCEDURE spCalIndCuenta
--- EXEC spCalIndCuenta 'CU','201812', 'MDB437INCA', 0
+-- EXEC spCalIndCuenta 'CU','201812', 'CUCOCXC', 0
 ALTER PROCEDURE [dbo].[spCalIndCuenta]  @pCveEmpresa varchar(4), @pAnoMes varchar(6), @pCveIndicador varchar(10),
                                         @pTotIndicador  numeric(16,2) OUTPUT
 AS
@@ -47,7 +47,7 @@ BEGIN
 		   @k_no_nivel     int        =  0
 
   DECLARE @TCuentas TABLE (
-          RowID           int IDENTITY(1, 1), 
+          RowID           int IDENTITY(1,1), 
 		  CVE_EMPRESA     varchar(4),
           CVE_INDICADOR   varchar(10),
           CTA_CONTABLE    varchar(30),
@@ -184,7 +184,7 @@ BEGIN
 	END 
 	ELSE
 	BEGIN
-	  IF  @cve_abono  =  @k_resta
+	  IF  @cve_sdo_inicial  =  @k_resta
 	  BEGIN
 	    SET  @sdo_inicio_mes  =  @sdo_inicio_mes * -1 
 	  END
@@ -193,13 +193,11 @@ BEGIN
 	SET  @pTotIndicador  =  @pTotIndicador + @tot_cargos  +  @tot_abonos + @sdo_inicio_mes
 --	SELECT CONVERT(VARCHAR(4), @nivel) 
     SET @RowCount = @RowCount + 1
---SELECT 'DEBE 2'
---SELECT CONVERT(VARCHAR(16), @tot_cargos) 		
---SELECT 'HABER 2' 
---SELECT CONVERT(VARCHAR(16), @tot_abonos) 
---SELECT 'TOTAL' 
---SELECT CONVERT(VARCHAR(16), @pTotIndicador) 		
-
-
+--SELECT 'CUENTA ' + SUBSTRING(@cta_contable,1,@nivel)
+--SELECT 'SDO INI ' + CONVERT(VARCHAR(16), @sdo_inicio_mes) 		
+--SELECT 'DEBE 2' + CONVERT(VARCHAR(16), @tot_cargos) 		
+--SELECT 'HABER 2' + CONVERT(VARCHAR(16), @tot_abonos) 
+--SELECT 'TOTAL' +  CONVERT(VARCHAR(16), @pTotIndicador) 		
   END                                                                                             
+	
 END

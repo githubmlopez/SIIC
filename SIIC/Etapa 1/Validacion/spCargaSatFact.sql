@@ -48,12 +48,13 @@ BEGIN
 		  @tot_registros int = 0,
 		  @situacion     varchar(2)
 
-  DECLARE @k_verdadero   varchar(1) = 1,
+  DECLARE @k_verdadero   bit        = 1,
           @k_activa      varchar(2) = 'A',
 		  @k_cancelada   varchar(2) = 'C',
 		  @k_error       varchar(1) = 'E',
 		  @k_factura     int        = 30,
-		  @k_CXP         int        = 20
+		  @k_CXP         int        = 20,
+		  @k_no_conc     varchar(2) = 'NC'
 
   DECLARE @TvpSatFact TABLE
  (
@@ -72,15 +73,27 @@ BEGIN
   F_CANCELACION   date           NULL
   )
 
+
   SELECT
   @pIdCliente = CONVERT(INT,SUBSTRING(PARAMETRO,1,6)),
   @pIdFormato = CONVERT(INT,SUBSTRING(PARAMETRO,7,6)),
   @pIdBloque  = CONVERT(INT,SUBSTRING(PARAMETRO,13,6))
   FROM  FC_GEN_PROCESO WHERE CVE_EMPRESA = @pCveEmpresa AND ID_PROCESO = @pIdProceso
 
-  SELECT CONVERT(varchar(10),@pIdCliente)
-  SELECT CONVERT(varchar(10),@pIdFormato)
-  SELECT CONVERT(varchar(10),@pIdBloque)
+  IF  @pIdFormato  =  @k_factura
+  BEGIN
+    DELETE FROM CI_SAT_FACTURA WHERE
+    ANO_MES_PROC = @pAnoPeriodo 
+  END
+  ELSE
+  BEGIN
+	DELETE FROM CI_SAT_CXP WHERE
+    ANO_MES_PROC = @pAnoPeriodo 
+  END
+
+  --SELECT CONVERT(varchar(10),@pIdCliente)
+  --SELECT CONVERT(varchar(10),@pIdFormato)
+  --SELECT CONVERT(varchar(10),@pIdBloque)
 
   BEGIN TRY
 
@@ -283,7 +296,10 @@ BEGIN
     IMP_FACTURA,
     EFECTO_COMPROB,
     ESTATUS,
-    F_CANCELACION
+    F_CANCELACION,
+	ANO_MES_PROC,
+	SIT_CONCILIA,
+	B_AUTOMATICO
     )
     SELECT 
     ID_UNICO,
@@ -297,7 +313,10 @@ BEGIN
     IMP_FACTURA,
     EFECTO_COMPROB,
     ESTATUS,
-    F_CANCELACION
+    F_CANCELACION,
+	@pAnoPeriodo,
+	@k_no_conc,
+	@k_verdadero
     FROM  @TvpSatFact
   END
   ELSE
@@ -315,7 +334,12 @@ BEGIN
     IMP_FACTURA,
     EFECTO_COMPROB,
     ESTATUS,
-    F_CANCELACION
+    F_CANCELACION,
+	ID_CXP,
+	ID_CXP_DET,
+	SIT_CONCILIA,
+	ANO_MES_PROC,
+	B_AUTOMATICO
     )
     SELECT 
     ID_UNICO,
@@ -329,7 +353,12 @@ BEGIN
     IMP_FACTURA,
     EFECTO_COMPROB,
     ESTATUS,
-    F_CANCELACION
+    F_CANCELACION,
+	NULL,
+	NULL,
+	@k_no_conc,
+	@pAnoPeriodo,
+	@k_verdadero
     FROM  @TvpSatFact
 
   END
@@ -343,7 +372,5 @@ BEGIN
   END CATCH
 
   EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @cont_regist
-
-
 END
 

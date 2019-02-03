@@ -17,7 +17,7 @@ CREATE PROCEDURE [dbo].[spRegImss]
 (
 @pIdProceso       numeric(9),
 @pIdTarea         numeric(9),
-@pCodigoUsusario  varchar(20),
+@pCodigoUsuario   varchar(20),
 @pIdCliente       int,
 @pCveEmpresa      varchar(4),
 @pCveAplicacion   varchar(10),
@@ -25,37 +25,47 @@ CREATE PROCEDURE [dbo].[spRegImss]
 @pAnoPeriodo      varchar(6),
 @pIdEmpleado      int,
 @pZona            int,
+@pCvePuesto       varchar(15),
 @pCveTipoEmpleado varchar(2),
 @pCveTipoPercep   varchar(2),
 @pFIngreso        date,
 @pSueldoMensual   numeric(16,2),
+@pIdRegFiscal     int,
+@pIdTipoCont      int,
+@pIdBanco         int,
+@pIdJorLab        int,
+@pIdRegContrat    int,
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
 
 AS
 BEGIN
+--  SELECT 'spRegImss'
   DECLARE  @cve_concepto      varchar(4)  =  ' ',
            @imp_concepto      int         =  0,
 		   @gpo_transaccion   int         =  0
 
   DECLARE  @k_verdadero       bit         =  1,
 		   @k_falso           bit         =  0,
+		   @k_error           varchar(1)  =  'E',
 		   @k_imss            varchar(4)  =  'IMSS',
 		   @k_infonavit       varchar(4)  =  'INFO',
 		   @k_sar             varchar(4)  =  'SAR',
-		   @k_c_imss          varchar(4)  =  '06',
-		   @k_c_infonavit     varchar(4)  =  '07',
-		   @k_c_sar           varchar(4)  =  '08'
+		   @k_c_imss          varchar(4)  =  '0002',
+		   @k_c_infonavit     varchar(4)  =  '0018',
+		   @k_c_sar           varchar(4)  =  '0019'
 
 
   DECLARE  @NunRegistros      int, 
            @RowCount          int
 
+  BEGIN TRY 
+
   EXEC spCalculaSBC 
   @pIdProceso,
   @pIdTarea,
-  @pCodigoUsusario,
+  @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
   @pCveAplicacion,
@@ -86,7 +96,7 @@ BEGIN
   EXEC spInsPreNomina  
   @pIdProceso,
   @pIdTarea,
-  @pCodigoUsusario,
+  @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
   @pCveAplicacion,
@@ -117,7 +127,7 @@ BEGIN
   EXEC spInsPreNomina  
   @pIdProceso,
   @pIdTarea,
-  @pCodigoUsusario,
+  @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
   @pCveAplicacion,
@@ -148,7 +158,7 @@ BEGIN
   EXEC spInsPreNomina  
   @pIdProceso,
   @pIdTarea,
-  @pCodigoUsusario,
+  @pCodigoUsuario,
   @pIdCliente,
   @pCveEmpresa,
   @pCveAplicacion,
@@ -164,5 +174,22 @@ BEGIN
   ' ',
   @pError OUT,
   @pMsgError OUT
+
+  END TRY
+
+  BEGIN CATCH
+    SET  @pError    =  'E- Calculo IMSS ' + CONVERT(VARCHAR(10), @pIdEmpleado) + '(P)' + ERROR_PROCEDURE() 
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento 
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_error,
+    @pError,
+    @pMsgError
+  END CATCH
 
 END

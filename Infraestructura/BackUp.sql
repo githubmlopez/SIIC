@@ -1,11 +1,11 @@
-USE [ADMON01]
+USE [ADNOMINA01]
 GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
---EXECUTE spBackUp 'ADMON01'
-ALTER PROCEDURE spBackUp @pBase nvarchar(20) 
+--EXECUTE spBackUp 'ADNOMINA01'
+CREATE PROCEDURE spBackUp @pBase nvarchar(20) 
 
 AS
 BEGIN
@@ -25,10 +25,10 @@ Left(@@Version, Charindex('-', @@version) - 2) As VersionName
 
 SET  @fecha = CONVERT(VARCHAR,GETDATE(), 112)
 
-SET @disk  =  'C:\RESPALDOSBDMLP\' + RTRIM(@pBase) + RTRIM(SUBSTRING(@fecha,1,10)) + '.' + 'BAK' 
+SET @disk  =  'C:\RESPALDOSMLP\' + RTRIM(@pBase) + RTRIM(SUBSTRING(@fecha,1,10)) + '.' + 'BAK' 
 SET @name  =  RTRIM(@pBase) + '-Full Database Backup'
 
-BACKUP DATABASE [ADMON01] TO  DISK = @disk
+BACKUP DATABASE [ADNOMINA01] TO  DISK = @disk
 WITH NOFORMAT, NOINIT,  NAME = @name, SKIP, 
 NOREWIND, NOUNLOAD,  STATS = 10
 

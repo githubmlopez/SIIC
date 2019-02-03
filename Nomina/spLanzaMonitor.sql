@@ -13,7 +13,7 @@ BEGIN
 END
 GO
 
---EXEC spLanzaMonitor 1,'CU','NOMINA','MLOPEZ', '201803', 'S','MONITOR1', 0
+--EXEC spLanzaMonitor 1,'CU','NOMINA','MLOPEZ', '201812', 'S','M1PRINCIPA', 0
 CREATE PROCEDURE [dbo].[spLanzaMonitor]  
 (
 @pIdCliente     int,

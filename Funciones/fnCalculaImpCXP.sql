@@ -1,3 +1,5 @@
+USE ADMON01
+GO 
 ALTER FUNCTION fnCalculaImpCXP (@pImp_Estim numeric(16,2), @pImp_Real numeric(16,2))
 RETURNS numeric(18,2)
 -- WITH EXECUTE AS CALLER

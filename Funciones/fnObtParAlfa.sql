@@ -1,4 +1,7 @@
-CREATE FUNCTION fnObtParAlfa
+USE ADMON01
+GO
+
+ALTER FUNCTION fnObtParAlfa
 ( @pcve_parametro varchar(10))
 RETURNS varchar(30)
 -- WITH EXECUTE AS CALLER

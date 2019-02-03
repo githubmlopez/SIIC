@@ -1,4 +1,7 @@
- CREATE FUNCTION fnArmaAnoMes (@pano int, @pMes int)
+USE ADMON01
+GO
+
+ALTER FUNCTION fnArmaAnoMes (@pano int, @pMes int)
 RETURNS varchar(6)
 -- WITH EXECUTE AS CALLER
 AS

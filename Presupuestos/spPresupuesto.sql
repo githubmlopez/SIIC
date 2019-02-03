@@ -1,3 +1,6 @@
+USE ADMON01
+GO
+
 SELECT CONVERT(varchar(4),YEAR(i.F_INICIO)) +  replicate ('0',(02 - len(MONTH(i.F_INICIO)))) + 
 convert(varchar, MONTH(i.F_INICIO)) as 'Año/Mes',
 f.CVE_EMPRESA as 'Empresa', F.SERIE as 'Serie', f.ID_CXC as 'Id. CXC',
@@ -70,7 +73,7 @@ s.CVE_PRODUCTO = p.CVE_PRODUCTO       and
 f.SIT_TRANSACCION = 'A'               and
 f.SERIE <> 'LEGACY'                   and
 p.CVE_PRODUCTO = 'PO'                 and
-YEAR(i.F_INICIO)  in ('2016','2017')  and
+YEAR(i.F_INICIO)  in ('2017','2018')  and
 dbo.fnObtSitPol(i.CVE_EMPRESA, i.SERIE, i.ID_CXC, i.ID_ITEM) <> '9' -- and
 --not exists (select 1 from CI_ITEM_C_X_C i2 where i.CVE_EMPRESA  = i2.CVE_EMPRESA_RENO AND
 --                                                  i.SERIE        = i2.SERIE_RENO       AND
@@ -119,5 +122,13 @@ YEAR(f.F_OPERACION)  >= '2018'        and
  i.ID_ITEM_RENO     is null)           and
  dbo.fnObtSitPol(i.CVE_EMPRESA, i.SERIE, i.ID_CXC, i.ID_ITEM) <> '9'
 order by Clave, i.F_INICIO, c.ID_CLIENTE, f.ID_CXC 
+
+--SELECT ID_CXC_RENO FROM CI_ITEM_C_X_C i, CI_FACTURA f
+--WHERE f.CVE_EMPRESA = i.CVE_EMPRESA AND
+--      f.SERIE = i.SERIE AND
+--	  f.ID_CXC = i.ID_CXC AND
+--	  f.SIT_TRANSACCION = 'A'
+--GROUP BY ID_CXC_RENO 
+--HAVING COUNT(*) > 1
 
 

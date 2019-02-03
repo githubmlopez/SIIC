@@ -199,7 +199,7 @@ BEGIN
     END TRY
   
     BEGIN CATCH
-      SET  @pError    =  'Error Insert Det. IMSS ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
+      SET  @pError    =  'Error Insert Det. IMSS ' + '(P)' + ISNULL(ERROR_PROCEDURE(), ' ')  
       SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
       EXECUTE spCreaTareaEvento
 	  @pIdProceso,
