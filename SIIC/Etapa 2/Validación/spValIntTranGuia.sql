@@ -9,7 +9,7 @@ GO
 SET NOCOUNT ON
 GO
                              
---EXEC spValIntTranGuia 'CU', 'MLOPEZ', '201804', 12,371, ' ', ' '
+--EXEC spValIntTranGuia 'CU', 'MLOPEZ', '201901', 1,2, ' ', ' '
 
 ALTER PROCEDURE [dbo].[spValIntTranGuia]  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                            @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
@@ -60,7 +60,7 @@ BEGIN
 		   @valor_concepto    varchar(200),
 		   @cta_contable      varchar(30),
 		   @naturaleza        varchar(1),
-		   @ano_mes_acred     numeric(16,4),
+		   @ano_mes_acred     varchar(6),
 		   @id_movto_bancario numeric(9,0),
 		   @imp_concepto      numeric(16,4)
  
@@ -204,7 +204,7 @@ BEGIN
     SET @RowCount     = @RowCount + 1
 
   END 
-                        
+                      
   INSERT  @TConcTranCero  (ID_TRANSACCION, CVE_CONC_TRANS, NATURALEZA, IMP_CONCEPTO)
   SELECT co.ID_TRANSACCION, co.CVE_CONC_TRANS, ct.CVE_NATURALEZA, IMP_CONCEPTO FROM CI_CONC_TRANSACCION ct, CI_CONCEP_TRANSAC co  WHERE
          ct.CVE_EMPRESA     =  @pCveEmpresa        AND
@@ -247,10 +247,10 @@ BEGIN
 
   WHILE @RowCount <= @NunRegistros
   BEGIN
-	SELECT @ano_mes_acred  =  ANO_MES_ACRED, @id_movto_bancario = ID_MOVTO_BANCARIO
+	SELECT @ano_mes_acred     =  ISNULL(ANO_MES_ACRED,' '),
+	       @id_movto_bancario =  ISNULL(ID_MOVTO_BANCARIO,0)
 	FROM @TRegNoAcred 
     WHERE  RowID = @RowCount
-
     SET  @num_reg_proc  =  @num_reg_proc  +  1
     SET  @pError    =  'Reg IVA no Acreditado ' + @ano_mes_acred + ' ' +
 	                   CONVERT(varchar(9), @id_movto_bancario)

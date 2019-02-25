@@ -10,7 +10,7 @@ SET NOCOUNT ON
 GO
 
 
---exec spCuCoXCxC 'CU', 'MARIO', '201812', 1, 2, ' ', ' '
+--exec spCuCoXCxC 'CU', 'MARIO', '201901', 1, 2, ' ', ' '
 ALTER PROCEDURE spCuCoXCxC  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                    @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								   @pMsgError varchar(400) OUT
@@ -22,7 +22,7 @@ BEGIN
   		   @k_activa         varchar(1)   =  'A',
 		   @k_no_concilida   varchar(2)   =  'NC',
 		   @k_error          varchar(1)   =  'K',
-		   @k_cerrado        varchar(1)   =  'C',
+		   @k_abierto        varchar(1)   =  'C',
            @k_no_act         numeric(9,0) =  99999,
 		   @k_ind_cxc_p      varchar(10)  =  'CUCOCXC',
 		   @k_ind_cxc_d      varchar(10)  =  'CUCOCXCD'
@@ -31,12 +31,10 @@ BEGIN
            @num_reg_proc     int = 0
 
   BEGIN TRY
-    IF  (SELECT SIT_PERIODO  FROM CI_PERIODO_CONTA WHERE ANO_MES = @pAnoMes) = @k_cerrado
+    IF  (SELECT SIT_PERIODO  FROM CI_PERIODO_CONTA WHERE ANO_MES = @pAnoMes) = @k_abierto
 	BEGIN
       DELETE FROM CI_CUCO_C_X_C WHERE ANO_MES = @pAnoMes 
-	END
-	ELSE
-	BEGIN
+
       INSERT INTO CI_CUCO_C_X_C (ANO_MES, CVE_EMPRESA, SERIE, ID_CXC, F_OPERACION, ID_CLIENTE, NOMBRE_CLIENTE, DESC_PRODUCTO_FACT,
                                  CVE_F_MONEDA, IMP_F_NETO, TIPO_CAMBIO, TX_NOTA, IMP_PESOS, TX_NOTA_COBRANZA)
       SELECT @pAnoMes, @pCveEmpresa, f.SERIE, f.ID_CXC, f.F_OPERACION, c.ID_CLIENTE, c.NOM_CLIENTE, 

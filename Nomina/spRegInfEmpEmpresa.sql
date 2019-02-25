@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spRegInfEmpEmpresa
 END
 GO
---EXEC spRegInfEmpEmpresa 1,1,'MARIO',1,'CU','NOMINA','S','201803',1,' ',' '
+--EXEC spRegInfEmpEmpresa 1,1,'MARIO',1,'CU','NOMINA','S','201901',1,' ',' '
 CREATE PROCEDURE [dbo].[spRegInfEmpEmpresa]
 (
 @pIdProceso       numeric(9),
@@ -40,13 +40,15 @@ CREATE PROCEDURE [dbo].[spRegInfEmpEmpresa]
 )
 AS
 BEGIN
---  SELECT 'spRegInfEmpEmpresa'
-  DECLARE  @dias_incap   int = 0,
-           @dias_falta   int = 0,
-		   @dias_vaca    int = 0,
-		   @dias_int     numeric(4,2)  =  0,
-		   @dias_int_m   numeric(4,2)  =  0,
-		   @num_dias_mes numeric(4,2)  =  0
+  SELECT 'spRegInfEmpEmpresa'
+  DECLARE  @dias_incap     int = 0,
+           @dias_falta     int = 0,
+		   @dias_vaca      int = 0,
+		   @dias_mes       int = 0,
+		   @dias_int       numeric(4,2)  =  0,
+		   @dias_int_m     numeric(4,2)  =  0,
+		   @num_dias_mes   numeric(4,2)  =  0,
+		   @imp_tope_prima numeric(16,2) = 0
 
   DECLARE  @k_error     varchar(1)      = 'E',
   		   @k_fijo_min       varchar(2) =  'FM'
@@ -60,6 +62,7 @@ BEGIN
   CVE_EMPRESA  =  @pCveEmpresa  AND
   ID_EMPLEADO  =  @pIdEmpleado
 
+  SELECT 'VOY spCalNumIncap'
   EXEC spCalNumIncap  @pIdProceso,
                       @pIdTarea,
 					  @pCodigoUsuario,
@@ -73,6 +76,7 @@ BEGIN
 					  @pError OUT,
                       @pMsgError OUT
 
+  SELECT 'VOY spCalNumFaltas'
   EXEC spCalNumFaltas @pIdProceso,
                       @pIdTarea,
 					  @pCodigoUsuario,
@@ -86,6 +90,7 @@ BEGIN
 					  @pError OUT,
                       @pMsgError OUT
 
+    SELECT 'VOY spCalDiasVaca'
   EXEC spCalDiasVaca  @pIdProceso,
                       @pIdTarea,
 					  @pCodigoUsuario,
@@ -100,8 +105,10 @@ BEGIN
                       @pMsgError OUT
 
 
-  SELECT  @dias_int      = NUM_DIAS_INT,
-	      @dias_int_m    = NUM_DIAS_INT_M
+  SELECT  @dias_int       = NUM_DIAS_INT,
+	      @dias_int_m     = NUM_DIAS_INT_M,
+		  @dias_mes       = NUM_DIAS_MES,
+		  @imp_tope_prima = IMP_TOPE_PRIMA
   FROM    NO_EMPRESA c   WHERE
 	      ID_CLIENTE  =  @pIdCliente  AND
 	      CVE_EMPRESA =  @pCveEmpresa 
@@ -111,50 +118,58 @@ BEGIN
   BEGIN
     SET  @num_dias_mes  =  @dias_int_m
   END
-
+  SELECT 'INSERTO'
   INSERT NO_INF_EMP_PER
  (
-  ANO_PERIODO,
   ID_CLIENTE,
   CVE_EMPRESA,
-  ID_EMPLEADO,
   CVE_TIPO_NOMINA,
+  ANO_PERIODO,
+  ID_EMPLEADO,
   ZONA,
   CVE_PUESTO,
   CVE_TIPO_EMPLEADO,
   CVE_TIPO_PERCEP,
-  F_INGRESO,
   SUELDO_MENSUAL,
-  ID_REG_FISCAL, 
+  ID_REG_FISCAL,
   ID_TIPO_CONT,
   ID_BANCO,
   ID_JOR_LAB,
   ID_REG_CONTRAT,
-  NUM_DIAS_INT)
+  SALARIO_DIARIO,
+  NUM_FALTAS,
+  NUM_INCAPACIDAD,
+  DIAS_PRIMA_VAC,
+  NUM_DIAS_INT,
+  IMP_TOPE_PRIMA)
   VALUES
  (
-  @pAnoPeriodo,
   @pIdCliente,
   @pCveEmpresa,
-  @pIdEmpleado,
   @pCveTipoNomina, 
+  @pAnoPeriodo,
+  @pIdEmpleado,
   @pZona,
   @pCvePuesto,
   @pCveTipoEmpleado,
   @pCveTipoPercep,
-  @pFIngreso,
   @pSueldoMensual,
   @pIdRegFiscal,
   @pIdTipoCont,
   @pIdBanco,
   @pIdJorLab,
   @pIdRegContrat,
-  @num_dias_mes)
+  @pSueldoMensual / @dias_mes,
+  @dias_falta,
+  @dias_incap,
+  @dias_vaca,
+  @num_dias_mes,
+  @imp_tope_prima)
 
   END TRY
 
   BEGIN CATCH
- 
+  SElECT  ISNULL(ERROR_MESSAGE(), ' ')
   SET  @pError    =  'E- Reg. Inf. Empl. ' + CONVERT(VARCHAR(10), @pIdEmpleado) +
   ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
   SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))

@@ -84,7 +84,7 @@ BEGIN
     SET  @cve_bim_ant  =  @ano_bimestre  +
 	replicate ('0',(02 - len(CONVERT(INT,@num_bimestre) -1))) + convert(varchar, CONVERT(INT,@num_bimestre -1))
   END
-
+  SELECT 'BIM ANT' + @cve_bim_ant
 -------------------------------------------------------------------------------
 -- Calculo de periodos del bimestre anterior
 -------------------------------------------------------------------------------
@@ -103,6 +103,8 @@ BEGIN
   p.CVE_EMPRESA      = @pCveEmpresa     AND
   p.CVE_TIPO_NOMINA  = @pCveTipoNomina  AND
   p.CVE_BIMESTRE     = @cve_bim_ant
+
+  SELECT * FROM @TPeriodo
 
   SET @NunRegistros = @@ROWCOUNT
 ------------------------------------------------------------------------------------------------------
@@ -127,6 +129,8 @@ BEGIN
 	 c.ID_CLIENTE      = @pIdCliente      AND
      c.CVE_EMPRESA     = @pCveEmpresa     AND
 	 c.B_GRABABLE      = @k_verdadero) 
+
+	 SELECT 'ACUMULO ' + CONVERT(VARCHAR(10), @acum_percep)
 
     SET  @pSalBimAnt  =  @pSalBimAnt  + @acum_percep
 

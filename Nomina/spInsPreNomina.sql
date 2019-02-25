@@ -26,6 +26,7 @@ CREATE PROCEDURE [dbo].[spInsPreNomina]
 @pIdEmpleado     int,
 @pCveConcepto    varchar(4) ,
 @pImpConcepto    numeric(16,2),
+@pNumDias        int,
 @pImpAjuste      numeric(16,2),
 @pDiasAjuste     int ,
 @pGpoTransaccion int ,
@@ -36,6 +37,7 @@ CREATE PROCEDURE [dbo].[spInsPreNomina]
 )  
 AS
 BEGIN
+  select 'entre a insertar'
   DECLARE  @k_error varchar(1)  =  'E'
 
   BEGIN TRY 
@@ -48,6 +50,7 @@ BEGIN
   ID_EMPLEADO,
   CVE_CONCEPTO,
   IMP_CONCEPTO,
+  NUM_DIAS,
   IMP_AJUSTE,
   DIAS_AJUSTE,
   GPO_TRANSACCION,
@@ -60,6 +63,7 @@ BEGIN
   @pIdEmpleado,
   @pCveConcepto,
   @pImpConcepto,
+  @pNumDias,
   @pImpAjuste,
   @pDiasAjuste,
   @pGpoTransaccion,

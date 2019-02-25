@@ -11,7 +11,7 @@ BEGIN
   DROP  PROCEDURE spCargaFile
 END
 GO
--- exec spCargaFile 3,1,'MARIO',1,'CU','CARGAINF','201811',' ',' '
+-- exec spCargaFile 2,1,'MARIO',1,'CU','CARGAINF','201901',' ',' '
 CREATE PROCEDURE [dbo].[spCargaFile] 
 (
 @pIdProceso     numeric(9),	
@@ -99,7 +99,7 @@ BEGIN
 
   IF  @b_correcto = @k_verdadero
   BEGIN
---    SELECT 'CORRECTO ' +  @car_separador
+    SELECT 'CORRECTO ' +  @car_separador
     DELETE FROM FC_CARGA_COL_DATO  WHERE
     ID_CLIENTE  =  @pIdCliente  AND
 	CVE_EMPRESA =  @pCveEmpresa AND
@@ -112,7 +112,7 @@ BEGIN
 	ID_FORMATO  =  @id_formato  AND
 	PERIODO     =  @pPeriodo  
 
---  	SELECT @pathcalc
+	SELECT @pathcalc
 
     IF  @cve_tipo_archivo  IN (@k_ascii, @k_csv)
 	BEGIN 

@@ -41,10 +41,13 @@ CREATE PROCEDURE [dbo].[spRegPrimaVac]
 )
 AS
 BEGIN
---  SELECT 'spRegPrimaVac'
-  DECLARE  @imp_concepto  numeric(16,2)
+  SELECT 'spRegPrimaVac'
+  DECLARE  @imp_concepto  numeric(16,2),
+           @imp_conc_grab numeric(16,2),
+		   @dias_vac      int
 
   DECLARE  @k_prima_vac   varchar(4)    =  '0015',
+           @k_prim_vac_g  varchar(4)    =  '0028',
            @k_error       varchar(1)    =  'E'
 
   BEGIN TRY
@@ -64,27 +67,57 @@ BEGIN
   @pCveTipoPercep,
   @pAnoPeriodo,
   @pSueldoMensual,
-  @imp_concepto OUT
+  @imp_concepto OUT,
+  @imp_conc_grab OUT,
+  @dias_vac OUT
 
-  EXEC spInsPreNomina  
-  @pIdProceso,
-  @pIdTarea,
-  @pCodigoUsuario,
-  @pIdCliente,
-  @pCveEmpresa,
-  @pCveAplicacion,
-  @pCveTipoNomina,
-  @pAnoPeriodo,
-  @pIdEmpleado,
-  @k_prima_vac,
-  @imp_concepto,
-  0,
-  0,
-  0,
-  ' ',
-  ' ',
-  @pError OUT,
-  @pMsgError OUT
+  IF  @imp_concepto > 0
+  BEGIN
+    EXEC spInsPreNomina  
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @pCveTipoNomina,
+    @pAnoPeriodo,
+    @pIdEmpleado,
+    @k_prima_vac,
+    @imp_concepto,
+    @dias_vac,
+    0,
+    0,
+    0,
+    ' ',
+    ' ',
+    @pError OUT,
+    @pMsgError OUT
+  END
+
+  IF  @imp_conc_grab > 0
+  BEGIN
+    EXEC spInsPreNomina  
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @pCveTipoNomina,
+    @pAnoPeriodo,
+    @pIdEmpleado,
+    @k_prim_vac_g,
+    @imp_conc_grab,
+    @dias_vac,
+    0,
+    0,
+    0,
+    ' ',
+    ' ',
+    @pError OUT,
+    @pMsgError OUT
+  END
 
   END TRY
 

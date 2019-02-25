@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spRegImss
 END
 GO
---EXEC spRegImss 1,1,'MARIO',1,'CU','NOMINA','S','201803',1,10000,' ',' '
+--EXEC spRegImss 2,1,'MARIO',1,'CU','NOMINA','AM','201801',12,10000,' ',' '
 CREATE PROCEDURE [dbo].[spRegImss]
 (
 @pIdProceso       numeric(9),
@@ -41,7 +41,7 @@ CREATE PROCEDURE [dbo].[spRegImss]
 
 AS
 BEGIN
---  SELECT 'spRegImss'
+  SELECT 'spRegImss'
   DECLARE  @cve_concepto      varchar(4)  =  ' ',
            @imp_concepto      int         =  0,
 		   @gpo_transaccion   int         =  0
@@ -52,10 +52,7 @@ BEGIN
 		   @k_imss            varchar(4)  =  'IMSS',
 		   @k_infonavit       varchar(4)  =  'INFO',
 		   @k_sar             varchar(4)  =  'SAR',
-		   @k_c_imss          varchar(4)  =  '0002',
-		   @k_c_infonavit     varchar(4)  =  '0018',
-		   @k_c_sar           varchar(4)  =  '0019'
-
+		   @k_c_imss          varchar(4)  =  '0002'
 
   DECLARE  @NunRegistros      int, 
            @RowCount          int
@@ -82,7 +79,7 @@ BEGIN
   ID_CLIENTE   =  @pIdCliente   AND
   CVE_EMPRESA  =  @pCveEmpresa  AND
   ID_EMPLEADO  =  @pIdEmpleado  AND
-  CVE_CONCEPTO IN (@k_c_imss,@k_c_infonavit,@k_c_sar)
+  CVE_CONCEPTO IN (@k_c_imss)
 
   SET  @cve_concepto  =  @k_c_imss
 
@@ -90,8 +87,8 @@ BEGIN
   ANO_PERIODO  =  @pAnoPeriodo  AND
   ID_CLIENTE   =  @pIdCliente AND
   CVE_EMPRESA  =  @pCveEmpresa AND
-  ID_EMPLEADO  =  @pIdEmpleado AND
-  CVE_ENTIDAD  =  @k_imss
+  ID_EMPLEADO  =  @pIdEmpleado -- AND
+  -- CVE_ENTIDAD  =  @k_imss
 
   EXEC spInsPreNomina  
   @pIdProceso,
@@ -113,73 +110,75 @@ BEGIN
   @pError OUT,
   @pMsgError OUT
 
-  SET  @cve_concepto  =  @k_c_infonavit
+  --SET  @cve_concepto  =  @k_c_infonavit
 
-  SELECT  @imp_concepto = SUM(IMP_CUOT_OBRERO)  FROM  NO_DET_CONC_OB_PAT WHERE
-  ANO_PERIODO  =  @pAnoPeriodo  AND
-  ID_CLIENTE   =  @pIdCliente AND
-  CVE_EMPRESA  =  @pCveEmpresa AND
-  ID_EMPLEADO  =  @pIdEmpleado AND
-  CVE_ENTIDAD  =  @k_infonavit
+  --SELECT  @imp_concepto = SUM(IMP_CUOT_OBRERO)  FROM  NO_DET_CONC_OB_PAT WHERE
+  --ANO_PERIODO  =  @pAnoPeriodo  AND
+  --ID_CLIENTE   =  @pIdCliente AND
+  --CVE_EMPRESA  =  @pCveEmpresa AND
+  --ID_EMPLEADO  =  @pIdEmpleado AND
+  --CVE_ENTIDAD  =  @k_infonavit
 
-  SET @imp_concepto = ISNULL(@imp_concepto,0)
+  --SET @imp_concepto = ISNULL(@imp_concepto,0)
 
-  EXEC spInsPreNomina  
-  @pIdProceso,
-  @pIdTarea,
-  @pCodigoUsuario,
-  @pIdCliente,
-  @pCveEmpresa,
-  @pCveAplicacion,
-  @pCveTipoNomina,
-  @pAnoPeriodo,
-  @pIdEmpleado,
-  @cve_concepto,
-  @imp_concepto,
-  0,
-  0,
-  0,
-  ' ',
-  ' ',
-  @pError OUT,
-  @pMsgError OUT
+  --EXEC spInsPreNomina  
+  --@pIdProceso,
+  --@pIdTarea,
+  --@pCodigoUsuario,
+  --@pIdCliente,
+  --@pCveEmpresa,
+  --@pCveAplicacion,
+  --@pCveTipoNomina,
+  --@pAnoPeriodo,
+  --@pIdEmpleado,
+  --@cve_concepto,
+  --@imp_concepto,
+  --0,
+  --0,
+  --0,
+  --' ',
+  --' ',
+  --@pError OUT,
+  --@pMsgError OUT
 
-  SET  @cve_concepto  =  @k_c_sar
+  --SET  @cve_concepto  =  @k_c_sar
 
-  SELECT  @imp_concepto = SUM(IMP_CUOT_OBRERO)  FROM  NO_DET_CONC_OB_PAT WHERE
-  ANO_PERIODO  =  @pAnoPeriodo  AND
-  ID_CLIENTE   =  @pIdCliente AND
-  CVE_EMPRESA  =  @pCveEmpresa AND
-  ID_EMPLEADO  =  @pIdEmpleado AND
-  CVE_ENTIDAD  =  @k_sar
+  --SELECT  @imp_concepto = SUM(IMP_CUOT_OBRERO)  FROM  NO_DET_CONC_OB_PAT WHERE
+  --ANO_PERIODO  =  @pAnoPeriodo  AND
+  --ID_CLIENTE   =  @pIdCliente AND
+  --CVE_EMPRESA  =  @pCveEmpresa AND
+  --ID_EMPLEADO  =  @pIdEmpleado AND
+  --CVE_ENTIDAD  =  @k_sar
 
-  SET @imp_concepto = ISNULL(@imp_concepto,0)
+  --SET @imp_concepto = ISNULL(@imp_concepto,0)
 
-  EXEC spInsPreNomina  
-  @pIdProceso,
-  @pIdTarea,
-  @pCodigoUsuario,
-  @pIdCliente,
-  @pCveEmpresa,
-  @pCveAplicacion,
-  @pCveTipoNomina,
-  @pAnoPeriodo,
-  @pIdEmpleado,
-  @cve_concepto,
-  @imp_concepto,
-  0,
-  0,
-  0,
-  ' ',
-  ' ',
-  @pError OUT,
-  @pMsgError OUT
+  --EXEC spInsPreNomina  
+  --@pIdProceso,
+  --@pIdTarea,
+  --@pCodigoUsuario,
+  --@pIdCliente,
+  --@pCveEmpresa,
+  --@pCveAplicacion,
+  --@pCveTipoNomina,
+  --@pAnoPeriodo,
+  --@pIdEmpleado,
+  --@cve_concepto,
+  --@imp_concepto,
+  --0,
+  --0,
+  --0,
+  --' ',
+  --' ',
+  --@pError OUT,
+  --@pMsgError OUT
 
   END TRY
 
   BEGIN CATCH
-    SET  @pError    =  'E- Calculo IMSS ' + CONVERT(VARCHAR(10), @pIdEmpleado) + '(P)' + ERROR_PROCEDURE() 
+    SELECT 'ERROR RegImss'
+	SET  @pError    =  'E- Calculo IMSS ' + CONVERT(VARCHAR(10), @pIdEmpleado) + '(P)' + ERROR_PROCEDURE() 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    SELECT '1' + @pMsgError
     EXECUTE spCreaTareaEvento 
     @pIdProceso,
     @pIdTarea,

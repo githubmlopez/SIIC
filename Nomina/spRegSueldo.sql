@@ -41,7 +41,14 @@ CREATE PROCEDURE [dbo].[spRegSueldo]
 AS
 BEGIN
 --  SELECT 'spRegSueldo'
-  DECLARE  @gpo_transaccion   int         =  0
+  DECLARE  @gpo_transaccion   int           =  0,
+           @dias_mes          int           =  0,
+		   @dias_periodo      int           =  0,
+		   @dias_trabajados   int           =  0,
+		   @num_faltas        int           =  0,
+		   @num_incap         int           =  0,
+		   @salario_diario    numeric(16,2) =  0,
+		   @sueldo_deveng     numeric(16,2) = 0
 
   DECLARE  @k_verdadero       bit         =  1,
 		   @k_falso           bit         =  0,
@@ -57,6 +64,29 @@ BEGIN
   ID_EMPLEADO  =  @pIdEmpleado  AND
   CVE_CONCEPTO IN (@k_cve_sdo)
 
+  SET @dias_mes = (SELECT NUM_DIAS_MES FROM NO_EMPRESA  WHERE
+                   ID_CLIENTE  =  @pIdCliente  AND
+				   CVE_EMPRESA =  @pCveEmpresa)
+  
+  SELECT @num_faltas = NUM_FALTAS, @num_incap = NUM_INCAPACIDAD,
+         @salario_diario = SALARIO_DIARIO
+		 FROM NO_INF_EMP_PER WHERE
+         ID_CLIENTE      =  @pIdCliente     AND
+		 CVE_EMPRESA     =  @pCveEmpresa    AND
+		 CVE_TIPO_NOMINA =  @pCveTipoNomina AND
+		 ANO_PERIODO     =  @pAnoPeriodo    AND
+		 ID_EMPLEADO     =  @pIdEmpleado  
+
+  SET  @dias_periodo  = 
+  (SELECT NUM_DIAS_PERIODO FROM NO_PERIODO  WHERE 
+          ID_CLIENTE      =  @pIdCliente     AND
+		  CVE_EMPRESA     =  @pCveEmpresa    AND
+		  CVE_TIPO_NOMINA =  @pCveTipoNomina AND
+		  ANO_PERIODO     =  @pAnoPeriodo)
+
+  SET @dias_trabajados = @dias_periodo - @num_faltas - @num_incap
+  SET @sueldo_deveng   = @salario_diario * @dias_trabajados
+
   EXEC spInsPreNomina  
   @pIdProceso,
   @pIdTarea,
@@ -68,7 +98,8 @@ BEGIN
   @pAnoPeriodo,
   @pIdEmpleado,
   @k_cve_sdo,
-  @pSueldoMensual ,
+  @sueldo_deveng,
+  @dias_trabajados,
   0,
   0,
   0,

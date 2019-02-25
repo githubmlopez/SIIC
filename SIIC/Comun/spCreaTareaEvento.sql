@@ -14,7 +14,11 @@ GO
 --ERROR_PROCEDURE() AS ErrorProcedure,  
 --ERROR_LINE() AS ErrorLine,  
 --ERROR_MESSAGE() AS ErrorMessage;  
-
+IF  EXISTS( SELECT 1 FROM ADMON01.sys.procedures WHERE Name =  'spCreaTareaEvento')
+BEGIN
+  DROP  PROCEDURE spCreaTareaEvento
+END
+GO
 CREATE PROCEDURE spCreaTareaEvento @pCveEmpresa varchar(4), @pIdProceso numeric(9), @pIdTarea numeric(9), @pTipoEvento varchar(1),
                                    @pError varchar(80), @pMsgError varchar(400) 
 AS
@@ -46,8 +50,8 @@ BEGIN
     @pIdTarea,
     @id_evento,
     @pTipoEvento,
-    @pError,
-    @pMsgError)
+    ISNULL(@pError,'INF. CON NULL '),
+    ISNULL(@pMsgError,'INF. CON NULL '))
   END TRY
 
   BEGIN CATCH

@@ -24,7 +24,7 @@ CREATE PROCEDURE [dbo].[spSdoDiaBimAnt]
  @pFactIntegracion numeric(16,6),
  @pSdoDiaBimAnt    numeric(16,6),
  @pSdi             numeric(16,6) OUT, 
- @pSbc             numeric(16,6)OUT, 
+ @pSbc             numeric(16,6) OUT, 
  @pError           varchar(80) OUT,
  @pMsgError        varchar(400) OUT)
 

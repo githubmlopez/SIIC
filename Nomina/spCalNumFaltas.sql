@@ -70,7 +70,7 @@ BEGIN
     SELECT @num_dias = NUM_DIAS
 	FROM   @TFalta  WHERE  RowID = @RowCount
 
-	SET  @pDiasFaltas  =  @pDiasFaltas  +  @num_dias
+	SET  @pDiasFaltas  =  @pDiasFaltas  +  ISNULL(@num_dias,0)
 
     SET @RowCount     = @RowCount + 1
   END

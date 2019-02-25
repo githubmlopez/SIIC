@@ -28,7 +28,7 @@ CREATE PROCEDURE [dbo].[spGenProcNomina]
 )
 AS
 BEGIN
---  SELECT 'ENTRE A PROCESAR PROCEDIMIENTO'
+ SELECT 'ENTRE A PROCESAR PROCEDIMIENTO'
   DECLARE  @id_cliente		   int,                
            @cve_empresa        varchar(4),         
            @id_empleado        int,                 
@@ -80,9 +80,8 @@ BEGIN
            ID_TIPO_CONT         int,
 		   ID_BANCO             int,
            ID_JOR_LAB           int,
-           ID_REG_CONTRAT       int,
-           SALARIO_BASE         int,
-           SALARIO_DIARIO       int)
+           ID_REG_CONTRAT       int)
+
 
   INSERT  @TEmpleado(
   ID_CLIENTE,
@@ -99,9 +98,7 @@ BEGIN
   ID_TIPO_CONT,
   ID_BANCO,
   ID_JOR_LAB,
-  ID_REG_CONTRAT,
-  SALARIO_BASE,
-  SALARIO_DIARIO)
+  ID_REG_CONTRAT)
   SELECT
   ID_CLIENTE,
   CVE_EMPRESA, 
@@ -117,9 +114,7 @@ BEGIN
   ID_TIPO_CONT,
   ID_BANCO,
   ID_JOR_LAB,
-  ID_REG_CONTRAT,
-  SALARIO_BASE,
-  SALARIO_DIARIO
+  ID_REG_CONTRAT
   FROM    NO_EMPLEADO e
   WHERE
   e.ID_CLIENTE       = @pIdCliente      AND
@@ -132,7 +127,7 @@ BEGIN
 
   WHILE @RowCount <= @NunRegistros
   BEGIN
-    SELECT @id_cliente		 =  ID_CLIENTE,                
+    SELECT @id_cliente		   =  ID_CLIENTE,                
            @cve_empresa        =  CVE_EMPRESA,         
            @id_empleado        =  ID_EMPLEADO,                 
            @cve_tipo_nomina    =  CVE_TIPO_NOMINA,          
@@ -191,15 +186,18 @@ BEGIN
 	 @CveTipoPercep_p   = @cve_tipo_percep, 
 	 @FIngreso_p        = @f_ingreso,
 	 @SueldoMensual_p   = @sueldo_mensual,
-	 @IdJorLab          = @id_jor_lab,
+     @IdRegFiscal_p     = @id_reg_fiscal,
+	 @IdTipoCont_p      = @id_tipo_cont,
+	 @IdBanco_p         = @id_banco,
+	 @IdJorLab_p        = @id_jor_lab,
 	 @idRegContrat_p    = @id_reg_contrat,
 	 @Error_p           = @pError OUTPUT,
 	 @MsgError_p        = @pMsgError OUTPUT 
-
 	 END TRY
 	 BEGIN CATCH
        SET  @pError    =  'E- Al Lanzar proc. ' + @store_proc + '(P)' + ERROR_PROCEDURE() 
        SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+       SELECT '0' + isnull(ERROR_MESSAGE(), ' ')
        EXECUTE spCreaTareaEvento 
        @pIdProceso,
        @pIdTarea,

@@ -27,15 +27,19 @@ CREATE PROCEDURE [dbo].[spCalcFactNomina]
 @pPropDiaAguin    numeric(16,6) OUT,
 @pPropDiaPrima    numeric(16,6) OUT,
 @pFactIntegracion numeric(16,6) OUT,
+@pDiasDerVaca     int OUT,
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
 AS
 BEGIN
+--  SELECT 'ANO PERIODO' + @pAnoPeriodo 
+  
   DECLARE  @dias_aguinaldo     numeric(6,2)   =  0.0,
            @dias_ano           numeric(6,2)   =  0.0,
 		   @pje_prima_vac      numeric(8,4)   =  0.0,
 		   @prima_vacacional   numeric(8,4)   =  0.0,
+		   @ano_bim_ant        varchar(6)     = ' ',
 		   @dias_vacaciones    int            =  0,
 		   @f_fin_periodo      date,
 		   @b_correcto         bit            =  1
@@ -62,35 +66,40 @@ BEGIN
 	SET  @pje_prima_vac  =  0
   END
 
-  IF EXISTS(
-  SELECT 1 FROM NO_PERIODO p  WHERE 
-  p.ID_CLIENTE      = @pIdCliente      AND
-  p.CVE_EMPRESA     = @pCveEmpresa     AND
-  p.CVE_TIPO_NOMINA = @pCveTipoNomina  AND
-  p.ANO_PERIODO     = @pAnoPeriodo)      
+  SET @ano_bim_ant = dbo.fnCalBimAnterior 
+  (
+  @pIdCliente,
+  @pCveEmpresa,
+  @pCveTipoNomina,
+  @pAnoPeriodo
+  )
+
+  IF 
+ (SELECT 1 FROM NO_BIMESTRE b WHERE 
+  b.CVE_BIMESTRE    = @ano_bim_ant) = 1      
   BEGIN
-      SELECT @f_fin_periodo = p.F_FIN FROM NO_PERIODO p  WHERE 
-      p.ID_CLIENTE      = @pIdCliente      AND
-      p.CVE_EMPRESA     = @pCveEmpresa     AND
-      p.CVE_TIPO_NOMINA = @pCveTipoNomina  AND
-      p.ANO_PERIODO     = @pAnoPeriodo      
+     SELECT @f_fin_periodo = b.F_FIN FROM NO_BIMESTRE b WHERE 
+	 b.CVE_BIMESTRE        = @ano_bim_ant  
+     SELECT '(B)' + LEFT(CONVERT(VARCHAR, @f_fin_periodo, 120), 10)
   END
   ELSE
   BEGIN
-    SET  @b_correcto     =  0
+    SET  @b_correcto     =  @k_falso
 	SET  @pAnoPeriodo    =  ' '
   END
+
   IF  @b_correcto  =  @k_verdadero
   BEGIN
  --   SELECT  CONVERT(VARCHAR(16), @dias_aguinaldo)
 	--SELECT  CONVERT(VARCHAR(16), @dias_ano)
 
     SET  @dias_vacaciones  =  ISNULL(dbo.fnCalDiasVacaciones(@pIdCliente, @pCveEmpresa, @pIdEmpleado, @f_fin_periodo),0)
+	SET  @pDiasDerVaca     =  @dias_vacaciones
     SET  @pPropDiaAguin    =  @dias_aguinaldo  /  @dias_ano
     SET  @pPropDiaPrima    =  (@dias_vacaciones * (@pje_prima_vac / 100)) / @dias_ano
 	--SELECT  CONVERT(VARCHAR(16), @pPropDiaPrima)
     SET  @pFactIntegracion =   1 + @pPropDiaAguin + @pPropDiaPrima
-
+	--SELECT CONVERT(VARCHAR(10), @pIdEmpleado)
 	--SELECT  CONVERT(VARCHAR(16), @dias_vacaciones)
 	--SELECT  CONVERT(VARCHAR(30), @pPropDiaAguin)
 	--SELECT  CONVERT(VARCHAR(30), @pPropDiaPrima)

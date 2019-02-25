@@ -34,8 +34,9 @@ BEGIN
 
   DECLARE  @ano_per_ini   varchar(6)  =  ' ',
            @ano_per_fin   varchar(6)  =  ' ',
-           @num_dias_p1   int,
-		   @num_dias_pn   int
+           @num_dias_p1   int         =  0,
+		   @num_dias_pn   int         =  0,
+		   @num_registros int         =  0  
 
   DECLARE  @k_verdadero   bit         =  1
 
@@ -54,28 +55,31 @@ BEGIN
   a.ID_MOTIVO        = m.ID_MOTIVO      AND
   m.B_INCAPACIDAD    = @k_verdadero     AND
   @pAnoPeriodo BETWEEN  a.ANO_PERIODO_INI AND a.ANO_PERIODO_FIN
+  SET @num_registros = @@ROWCOUNT
 
-  SET  @num_dias_p1  =  ISNULL(@num_dias_p1,0)
-  SET  @num_dias_pn  =  ISNULL(@num_dias_pn,0)
-
-  IF  @pAnoPeriodo = @ano_per_ini
+  IF  @num_registros > 0
   BEGIN
-	SET  @pDiasIncap  =  @num_dias_p1
-  END
-  ELSE
-  BEGIN
-    IF  @pAnoPeriodo = @ano_per_fin
+    SET  @num_dias_p1  =  ISNULL(@num_dias_p1,0)
+    SET  @num_dias_pn  =  ISNULL(@num_dias_pn,0)
+    IF  @pAnoPeriodo = @ano_per_ini
     BEGIN
-	  SET  @pDiasIncap  =  @num_dias_pn
-	END
-	ELSE
-	BEGIN
-      SET  @pDiasIncap  =  ISNULL((SELECT  p.NUM_DIAS_PERIODO  FROM  NO_PERIODO p WHERE 
-	                        p.ID_CLIENTE       = @pIdCliente      AND
-                            p.CVE_EMPRESA      = @pCveEmpresa     AND
-                            p.CVE_TIPO_NOMINA  = @pCveTipoNomina  AND
-                            p.ANO_PERIODO      = @pAnoPeriodo),999999)
-	END
+      SET  @pDiasIncap  =  @num_dias_p1
+    END
+    ELSE
+    BEGIN
+      IF  @pAnoPeriodo = @ano_per_fin
+      BEGIN
+	    SET  @pDiasIncap  =  @num_dias_pn
+	  END
+	  ELSE
+	  BEGIN
+        SET  @pDiasIncap  =  ISNULL((SELECT  p.NUM_DIAS_PERIODO  FROM  NO_PERIODO p WHERE 
+	                          p.ID_CLIENTE       = @pIdCliente      AND
+                              p.CVE_EMPRESA      = @pCveEmpresa     AND
+                              p.CVE_TIPO_NOMINA  = @pCveTipoNomina  AND
+                              p.ANO_PERIODO      = @pAnoPeriodo),999999)
+	  END 
+    END
   END
 --  SELECT CONVERT(VARCHAR(18),@pDiasIncap)
 END

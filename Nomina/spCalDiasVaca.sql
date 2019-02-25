@@ -42,6 +42,8 @@ BEGIN
   v.ID_EMPLEADO    =  ve.ID_EMPLEADO AND
   v.ANO_PERIODO    =  ve.ANO_PERIODO AND
   v.FOL_VACACIONES =  ve.FOL_VACACIONES
+
+  SET @pDiasVacaciones = ISNULL(@pDiasVacaciones,0)
   
 END
 

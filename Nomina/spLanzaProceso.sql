@@ -12,11 +12,11 @@ BEGIN
   DROP  PROCEDURE spLanzaProceso
 END
 GO
--- EXEC spLanzaProceso 'MON1',1,1,'CU','NOMINA','MARIO','201803','S','spGenProcNomina'
+-- EXEC spLanzaProceso 'MON1',5,1,'CU','NOMINA','MARIO','201901','SQ','spGenProcNomina'
 CREATE PROCEDURE spLanzaProceso
 (
 @pCveMonitor    varchar(10),
-@pIdProceso     numeric(9,0),
+@pIdProceso     numeric(9,0), 
 @pIdCliente     int,
 @pCveEmpresa    varchar(4),
 @pCveAplicacion varchar(10),
@@ -79,7 +79,7 @@ BEGIN
     N' @IdProceso_p numeric(9,0), @IdTarea_p numeric(9,0), @CodigoUsuario_p varchar(20), @IdCliente_p int,' +
     N'@CveEmpresa_p varchar(4), @CveAplicacion_p varchar(10), @CveTipoNomina_p varchar(2),' +
 	N'@AnoPeriodo_p varchar(6), @error_p varchar(80) OUT, @msg_error_p varchar(400) OUT'
- 
+
 --  SELECT ' sql==> ' + @sql
 --	SELECT ' par==> ' + @parametros
 
@@ -111,8 +111,9 @@ BEGIN
   END
   ELSE
   BEGIN
-    SET  @error    =  'Periodo no existe, cerrado o no existe periodo ISR'
+    SET  @error    =  'Periodo no existe o cerrado'
     SET  @msg_error =  LTRIM(@error + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    SELECT '1' + @msg_error
     EXECUTE spCreaTareaEvento 
     @pIdProceso,
     @id_tarea,

@@ -7,7 +7,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
---exec spCreaBalanza 'CU', 'MARIO', '201804', 12, 361, ' ', ' '
+--exec spCreaBalanza 'CU', 'MARIO', '201901', 1, 2, ' ', ' '
 
 ALTER PROCEDURE [dbo].[spCreaBalanza]   @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                            @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
@@ -108,14 +108,14 @@ BEGIN
 	          SELECT CVE_EMPRESA, ANO_MES, CTA_CONTABLE, IMP_CARGO_C, IMP_ABONO_C  FROM  @TSdosCtas
 			 )  AS SOURCE 
           ON TARGET.CVE_EMPRESA     = SOURCE.CVE_EMPRESA  AND
-             TARGET.ANO_MES         = SOURCE.ANO_MES      AND
+             TARGET.ANO_MES         = SOURCE.ANO_MES      AND	
 		     TARGET.CTA_CONTABLE    = SOURCE.CTA_CONTABLE   
 
   WHEN MATCHED THEN
        UPDATE 
           SET IMP_CARGO  = SOURCE.IMP_CARGO_C,
 		      IMP_ABONO  = SOURCE.IMP_ABONO_C,
-			  SDO_FINAL  = SDO_INICIAL  + SOURCE.IMP_CARGO_C - SOURCE.IMP_ABONO_C
+			  SDO_FINAL  = SDO_INICIAL  + SOURCE.IMP_CARGO_C - SOURCE.IMP_ABONO_C 
 
   WHEN NOT MATCHED BY TARGET THEN 
        INSERT (CVE_EMPRESA,
@@ -132,7 +132,7 @@ BEGIN
                0,
 		       SOURCE.IMP_CARGO_C,
 		       SOURCE.IMP_ABONO_C,
-		       SOURCE.IMP_ABONO_C -  SOURCE.IMP_CARGO_C);
+		       SOURCE.IMP_CARGO_C - SOURCE.IMP_ABONO_C);
 
   END TRY
 

@@ -39,9 +39,10 @@ CREATE PROCEDURE [dbo].[spRegIncidencias]
 )
 AS
 BEGIN  
---  SELECT 'spRegIncidencias'
+  SELECT 'spRegIncidencias'
   DECLARE  @cve_concepto      varchar(4)  =  ' ',
            @imp_concepto      int         =  0,
+		   @num_dias          int         =  0,
 		   @gpo_transaccion   int         =  0
 
   DECLARE  @k_verdadero       bit         =  1,
@@ -73,18 +74,19 @@ BEGIN
   c.B_RECIBO         = @k_verdadero) 
 
 -------------------------------------------------------------------------------
--- Calculo de deducciones fijas por periodo indefinido
+-- Calculo de Incidencia
 -------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------------------------
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
 -----------------------------------------------------------------------------------------------------
-  DECLARE  @TDeduccion       TABLE
+  DECLARE  @TDeduPercep       TABLE
           (RowID             int  identity(1,1),
-		   CVE_CONCEPTO      varchar(2),
-		   IMP_CONCEPTO      numeric(16,2))
+		   CVE_CONCEPTO      varchar(4),
+		   IMP_CONCEPTO      numeric(16,2),
+		   NUM_DIAS          int)
  
-  INSERT  @TDeduccion(CVE_CONCEPTO, IMP_CONCEPTO) 
-  SELECT  i.CVE_CONCEPTO, i.IMP_CONCEPTO
+  INSERT  @TDeduPercep(CVE_CONCEPTO, IMP_CONCEPTO, NUM_DIAS) 
+  SELECT  i.CVE_CONCEPTO, i.IMP_CONCEPTO, NUM_DIAS
   FROM    NO_INCIDENCIA i, NO_CONCEPTO c
   WHERE
   i.ANO_PERIODO      = @pAnoPeriodo     AND
@@ -100,11 +102,12 @@ BEGIN
   SET @NunRegistros = @@ROWCOUNT
 ------------------------------------------------------------------------------------------------------
   SET @RowCount     = 1
-
+  select * from @TDeduPercep
   WHILE @RowCount <= @NunRegistros
   BEGIN
-    SELECT @cve_concepto = CVE_CONCEPTO, @imp_concepto = IMP_CONCEPTO
-	FROM   @TDeduccion  WHERE  RowID = @RowCount
+    SELECT @cve_concepto = CVE_CONCEPTO, @imp_concepto = IMP_CONCEPTO, @num_dias = NUM_DIAS
+	FROM   @TDeduPercep  WHERE  RowID = @RowCount
+	select 'mando insertar'
 
 	EXEC spInsPreNomina  
     @pIdProceso,
@@ -118,6 +121,7 @@ BEGIN
     @pIdEmpleado,
     @cve_concepto,
     @imp_concepto,
+    @num_dias,
     0,
     0,
     0,

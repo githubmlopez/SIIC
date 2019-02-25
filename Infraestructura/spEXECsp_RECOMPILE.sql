@@ -1,5 +1,6 @@
-use ADMON01
+use ADNOMINA01
 GO
+-- EXEC dbo.spEXECsp_RECOMPILE
 CREATE PROCEDURE dbo.spEXECsp_RECOMPILE AS 
 /*
 ----------------------------------------------------------------------------
