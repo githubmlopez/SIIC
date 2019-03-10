@@ -18,15 +18,15 @@ CREATE PROCEDURE [dbo].[spCreaTarea]
 @pIdCliente     int,
 @pCveEmpresa    varchar(4),
 @pCveAplicacion varchar(10),
-@pCodigoUsuario varchar(20),
+@pCodigoUsuario   varchar(20),
 @pAnoPeriodo    varchar(6),
 @pIdTarea       numeric(9) OUT,
 @pError         varchar(80) OUT,
 @pMsgError      varchar(400) OUT 
+
 )
 AS
 BEGIN
-  
   DECLARE
   @k_id_tarea          varchar(10),
   @k_iniciando         varchar(1),
@@ -38,11 +38,12 @@ BEGIN
  
   SET  @pError      =  ' '
   SET  @pMsgError   =  ' '
-      
-  UPDATE FC_FOLIO SET NUM_FOLIO = NUM_FOLIO + 1 WHERE CVE_FOLIO  = @k_id_tarea
-  SET  @pIdtarea  =  (SELECT NUM_FOLIO FROM FC_FOLIO WHERE CVE_FOLIO  = @k_id_tarea)   
 
---  select ' El folio es ==> ' + CONVERT(varchar(10), @pIdtarea)
+  UPDATE FC_FOLIO SET NUM_FOLIO = NUM_FOLIO + 1 WHERE CVE_FOLIO  = @k_id_tarea
+  SET  @pIdtarea  =  (SELECT NUM_FOLIO FROM FC_FOLIO WHERE 
+  ID_CLIENTE  = @pIdCliente  AND
+  CVE_EMPRESA = @pCveEmpresa AND
+  CVE_FOLIO  = @k_id_tarea)   
 
   BEGIN TRY 
 

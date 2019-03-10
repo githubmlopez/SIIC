@@ -196,7 +196,7 @@ BEGIN
 	               CTA_CONTABLE =   @cta_contable)
     BEGIN
       SET  @num_reg_proc  =  @num_reg_proc  +  1
-	  SET  @pError    =  'No Existe Cuenta ' + @cta_contable + ' ' +  @cve_conc_trans
+	  SET  @pError    =  'No Existe Cuenta TRAN ' + @cta_contable + ' ' +  @cve_conc_trans
       SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(),' '))
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
 

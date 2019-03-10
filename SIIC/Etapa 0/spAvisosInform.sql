@@ -6,7 +6,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT  ON 
 GO
--- exec spAvisosInform 'CU', 'MLOPEZ', '201811', 1, 144, ' ', ' '
+-- exec spAvisosInform 'CU', 'MLOPEZ', '201901', 1, 144, ' ', ' '
 ALTER PROCEDURE [dbo].[spAvisosInform]  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                          @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								         @pMsgError varchar(400) OUT
@@ -83,7 +83,11 @@ BEGIN
 		   @k_verdadero     bit         =  1,
 		   @k_enero         int         =  1,
 		   @k_diciembre     int         =  12,
-		   @k_revisado      varchar(1)  =  '*'
+		   @k_revisado      varchar(1)  =  '*',
+		   @k_cero_uno      int         =  1,
+		   @k_primero       int         =  1,
+		   @k_factura       int         =  30,
+		   @k_cxp           int         =  20
 
   SET  @ano  =  CONVERT(INT,SUBSTRING(@pAnoMes,1,4))
   SET  @mes  =  CONVERT(INT,SUBSTRING(@pAnoMes,5,2))
@@ -804,4 +808,35 @@ BEGIN
   END
 
   EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @num_reg_proc 
+
+-- Verifica si existen registros para carga de movimientos SAT
+
+  IF  NOT EXISTS (SELECT 1 FROM CARGADOR.dbo.FC_CARGA_COL_DATO d WHERE
+                  d.ID_CLIENTE  =  @k_cero_uno    AND
+				  d.CVE_EMPRESA =  @pCveEmpresa   AND
+				  d.ID_FORMATO  =  @k_factura     AND
+				  d.ID_BLOQUE   =  @k_primero     AND
+				  SUBSTRING(d.PERIODO,1,6)     =  @pAnoMes)
+  BEGIN
+    SET @num_reg_proc = @num_reg_proc + 1  
+	SET  @pError    =  'No existen registros SAT CXC   ' + ISNULL(@pAnoMes, ' ')   
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
+  END
+
+  IF  NOT EXISTS (SELECT 1 FROM CARGADOR.dbo.FC_CARGA_COL_DATO d WHERE
+                  d.ID_CLIENTE  =  @k_cero_uno    AND
+				  d.CVE_EMPRESA =  @pCveEmpresa   AND
+				  d.ID_FORMATO  =  @k_cxp         AND
+				  d.ID_BLOQUE   =  @k_primero     AND
+				  SUBSTRING(d.PERIODO,1,6)     =  @pAnoMes)
+  BEGIN
+    SET @num_reg_proc = @num_reg_proc + 1  
+	SET  @pError    =  'No existen registros SAT CXP   ' + ISNULL(@pAnoMes, ' ')   
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
+  END
 END
+
+
+  

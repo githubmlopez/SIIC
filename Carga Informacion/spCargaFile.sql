@@ -11,7 +11,7 @@ BEGIN
   DROP  PROCEDURE spCargaFile
 END
 GO
--- exec spCargaFile 2,1,'MARIO',1,'CU','CARGAINF','201901',' ',' '
+-- exec spCargaFile 3,1,'MARIO',1,'CU','CARGAINF','201902',' ',' '
 CREATE PROCEDURE [dbo].[spCargaFile] 
 (
 @pIdProceso     numeric(9),	
@@ -66,7 +66,7 @@ BEGIN
 		  @cve_tipo_periodo varchar(1),
 		  @path             varchar(50),
 		  @pathcalc         varchar(50),
-		  @b_correcto       bit = 0
+		  @cve_correcto     int = 0
 
   DECLARE @row_file         varchar(max) = ' ',
 	      @row_fileo        varchar(max) = ' ',
@@ -76,7 +76,11 @@ BEGIN
   DECLARE @k_csv            varchar(3)  =  'CSV',
           @k_ascii          varchar(3)  =  'TXT',
 		  @k_directorio     varchar(3)  =  'DIR',
-		  @k_verdadero      bit         =  1
+		  @k_verdadero      bit         =  1,
+		  @k_correcto       int         =  1,
+		  @k_no_formato     int         =  2,
+		  @k_no_archivo     int         =  3,
+		  @k_error          varchar(1)  =  'E'
 
   DECLARE @sql              varchar(max)
 
@@ -88,7 +92,7 @@ BEGIN
   @pCveEmpresa,
   @pCveAplicacion,
   @pPeriodo, 
-  @b_correcto OUT,
+  @cve_correcto OUT,
   @id_formato OUT,
   @pathcalc OUT, 
   @cve_tipo_archivo OUT,
@@ -97,9 +101,11 @@ BEGIN
   @pError OUT,
   @pMsgError OUT
 
-  IF  @b_correcto = @k_verdadero
+  BEGIN TRY
+
+  IF  @cve_correcto = @k_correcto
   BEGIN
-    SELECT 'CORRECTO ' +  @car_separador
+--    SELECT 'CORRECTO ' 
     DELETE FROM FC_CARGA_COL_DATO  WHERE
     ID_CLIENTE  =  @pIdCliente  AND
 	CVE_EMPRESA =  @pCveEmpresa AND
@@ -112,7 +118,7 @@ BEGIN
 	ID_FORMATO  =  @id_formato  AND
 	PERIODO     =  @pPeriodo  
 
-	SELECT @pathcalc
+--	SELECT @pathcalc
 
     IF  @cve_tipo_archivo  IN (@k_ascii, @k_csv)
 	BEGIN 
@@ -398,12 +404,44 @@ BEGIN
 	  SET @RowCount     = @RowCount + 1
     END 
   END
+  ELSE
+  BEGIN
+    IF  @cve_correcto  =  @k_no_formato
+	BEGIN
+      SET  @pError    =  'No Existe el formato Especificado ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
+	END
+	ELSE
+	BEGIN
+      SET  @pError    =  'No extste archivo para el periodo-formato ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
+	END
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento 
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_error,
+    @pError,
+    @pMsgError
+  END
+  END TRY
+  BEGIN CATCH
+    SET  @pError    =  'Error de Ejecucion Proceso Carga File ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento 
+    @pIdProceso,
+    @pIdTarea,
+    @pCodigoUsuario,
+    @pIdCliente,
+    @pCveEmpresa,
+    @pCveAplicacion,
+    @k_error,
+    @pError,
+    @pMsgError  END CATCH
 END
 
 
---      SET  @pError    =  'Error de Ejecucion Proceso Gen. Balanza COI ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
---      SET  @pMsgError =  LTRIM(@pError + '==> ' + ERROR_MESSAGE())
---      SELECT @pMsgError
---      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
---    END CATCH
+
 

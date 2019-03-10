@@ -23,7 +23,8 @@ BEGIN
 		   @tx_nota_e         varchar(200),
 		   @concepto          varchar(200),
 		   @rfc               varchar(15),
-		   @b_emp_servicio    bit,
+		   @b_fac_cp          bit,
+		   @b_fac_item        bit,
 		   @id_proveedor      int,   
 		   @cve_tipo_oper     varchar(2)
 
@@ -46,7 +47,8 @@ BEGIN
 		   ID_PROVEEDOR      int,
 		   TX_NOTA           varchar(200),
 		   TX_NOTA_E         varchar(200),
-		   B_EMP_SERVICIO    bit)
+		   B_FAC_CP          bit,
+		   B_FAC_ITEM        bit)
 
 
   DELETE FROM CI_PERIODO_IVA WHERE ANO_MES  =  @pAnoMes  AND  CVE_TIPO =  @pCveTipo
@@ -54,9 +56,9 @@ BEGIN
 -----------------------------------------------------------------------------------------------------
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
 -----------------------------------------------------------------------------------------------------
-  INSERT  @TCxCConcil (ID_CXP, F_CAPTURA, CVE_MONEDA, IMP_IVA, IMP_BRUTO, TX_NOTA, TX_NOTA_E, RFC, ID_PROVEEDOR, B_EMP_SERVICIO) 
+  INSERT  @TCxCConcil (ID_CXP, F_CAPTURA, CVE_MONEDA, IMP_IVA, IMP_BRUTO, TX_NOTA, TX_NOTA_E, RFC, ID_PROVEEDOR, B_FAC_CP, B_FAC_ITEM) 
   SELECT  cp.ID_CXP, cp.F_CAPTURA, cp.CVE_MONEDA, i.IVA, i.IMP_BRUTO, i.TX_NOTA, cp.TX_NOTA, i.RFC, cp.ID_PROVEEDOR, 
-          cp.B_EMP_SERVICIO
+          cp.B_FACTURA, i.B_FACTURA
   FROM  CI_CONCILIA_C_X_P ccp, CI_CUENTA_X_PAGAR cp, CI_ITEM_C_X_P i
   WHERE   ccp.ID_CONCILIA_CXP  =  cp.ID_CONCILIA_CXP  AND
           cp.CVE_EMPRESA       =  i.CVE_EMPRESA       AND
@@ -64,7 +66,7 @@ BEGIN
           ccp.ANOMES_PROCESO   =  @pAnoMes            AND
 		  cp.CVE_CHEQUERA      <> @k_devengado  
   UNION
-  SELECT  cp.ID_CXP, cp.F_CAPTURA, cp.CVE_MONEDA, i.IVA, i.IMP_BRUTO, i.TX_NOTA, cp.TX_NOTA, i.RFC, cp.ID_PROVEEDOR, cp.B_EMP_SERVICIO
+  SELECT  cp.ID_CXP, cp.F_CAPTURA, cp.CVE_MONEDA, i.IVA, i.IMP_BRUTO, i.TX_NOTA, cp.TX_NOTA, i.RFC, cp.ID_PROVEEDOR, cp.B_FACTURA, i.B_FACTURA
   FROM    CI_CUENTA_X_PAGAR cp, CI_ITEM_C_X_P i
   WHERE   cp.CVE_EMPRESA       =  i.CVE_EMPRESA       AND
 		  cp.ID_CXP            =  i.ID_CXP            AND
@@ -79,7 +81,7 @@ BEGIN
   BEGIN
     SELECT @id_cxp = ID_CXP, @f_captura = F_CAPTURA,  @cve_moneda = CVE_MONEDA, @imp_iva = IMP_IVA, @imp_bruto = IMP_BRUTO,
 	       @tx_nota = TX_NOTA,
-	       @tx_nota_e = TX_NOTA_E,  @rfc = RFC, @id_proveedor  =  ID_PROVEEDOR, @b_emp_servicio = B_EMP_SERVICIO
+	       @tx_nota_e = TX_NOTA_E,  @rfc = RFC, @id_proveedor  =  ID_PROVEEDOR, @b_fac_cp = B_FAC_CP, @b_fac_item = B_FAC_CP
 	FROM @TCxCConcil  WHERE  RowID = @RowCount
 
 	IF  @cve_moneda  =  @k_dolar
@@ -91,11 +93,19 @@ BEGIN
 
     SET  @cve_tipo_oper  =  ISNULL((SELECT CVE_TIPO_OPERACION FROM CI_PROVEEDOR WHERE ID_PROVEEDOR  =  @id_proveedor), ' ')
 
-	IF  @b_emp_servicio  =  @k_falso
+	IF  @b_fac_cp  =  @k_verdadero
 	BEGIN
       SET  @rfc  =  ISNULL((SELECT RFC FROM CI_PROVEEDOR WHERE ID_PROVEEDOR  =  @id_proveedor), ' ')
 	  SET  @concepto = ISNULL('CXPS ' + CONVERT(VARCHAR(10),@id_cxp) + ' ==> ' + @tx_nota_e,' ')    
  	END
+	ELSE
+	BEGIN
+	  IF  @b_fac_item  =  @k_falso
+	  BEGIN
+	    SET @rfc = ' ' 
+	  END
+	END
+
 
 	SET  @imp_bruto  =  @imp_iva / @k_iva
 

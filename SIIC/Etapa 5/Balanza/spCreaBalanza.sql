@@ -18,11 +18,20 @@ AS
 BEGIN
 
   DECLARE  @TSdosCtas     TABLE
- (CVE_EMPRESA             varchar(4)           not null,
+ (RowID                   int  identity(1,1),
+  CVE_EMPRESA             varchar(4)           not null,
   ANO_MES                 varchar(6)           not null,
   CTA_CONTABLE            varchar(30)          not null,
-  IMP_CARGO_C             numeric(16,2)        null,
-  IMP_ABONO_C             numeric(16,2)        null)
+  IMP_CARGO_C             numeric(16,2)        not null,
+  IMP_ABONO_C             numeric(16,2)        not null,
+  IMP_DIF_D_H             numeric(16,2)        not null)
+
+  DECLARE
+  @cve_empresa            varchar(4),
+  @ano_mes                varchar(6),
+  @imp_cargo_c            numeric(16,2),
+  @imp_abono_c            numeric(16,2),
+  @imp_dif_d_h            numeric(16,2)
 
   DECLARE @cta_contable    varchar(13),
 		  @sdo_final       numeric(16,2),
@@ -39,7 +48,8 @@ BEGIN
 		  @k_no_identif   varchar(2) = 'NI',
 		  @k_pendiente    varchar(1) = 'P',
 		  @k_no_aplica    varchar(2) = 'NA',
-		  @k_verdadero    bit        = 1
+		  @k_verdadero    bit        = 1,
+		  @k_acreedora    varchar(1) = 'A'
 
   DECLARE @ano            int,
           @mes            int,
@@ -78,10 +88,47 @@ BEGIN
 								                        CI_CAT_CTA_CONT.CTA_CONTABLE = b.CTA_CONTABLE) = @k_verdadero
 --   SELECT  ' INSERTE LOS SALDOS INICIALES '
 
+-------------------------------------------------------------------------------
+-- Verificación de Actualización de diferencial
+-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
+-- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
+-----------------------------------------------------------------------------------------------------
   INSERT	INTO  @TSdosCtas 	
-  SELECT CVE_EMPRESA, ANO_MES, CTA_CONTABLE, SUM(IMP_DEBE), SUM(IMP_HABER)  FROM CI_DET_POLIZA
+  SELECT CVE_EMPRESA, ANO_MES, CTA_CONTABLE, SUM(IMP_DEBE), SUM(IMP_HABER), 0
+  FROM CI_DET_POLIZA
   WHERE ANO_MES  =   @pAnoMes
   GROUP BY CVE_EMPRESA, ANO_MES, CTA_CONTABLE
+  SET @NunRegistros = @@ROWCOUNT
+-----------------------------------------------------------------------------------------------------
+  SET @RowCount     = 1
+
+  WHILE @RowCount <= @NunRegistros
+  BEGIN
+    SELECT 
+    @cve_empresa   = CVE_EMPRESA,
+    @ano_mes       = ANO_MES,
+    @cta_contable  = CTA_CONTABLE,
+	@imp_cargo_c   = IMP_CARGO_C,
+    @imp_abono_c   = IMP_ABONO_C,
+    @imp_dif_d_h   = IMP_DIF_D_H  FROM @TSdosCtas
+	WHERE  RowID  =  @RowCount
+
+    IF  (SELECT  CVE_NATURALEZA FROM CI_CAT_CTA_CONT  WHERE 
+	     CVE_EMPRESA  =  @cve_empresa  AND
+		 CTA_CONTABLE =  @cta_contable)  =  @k_acreedora
+	BEGIN
+	  UPDATE  @TSdosCtas SET IMP_DIF_D_H  =  IMP_ABONO_C - IMP_CARGO_C
+	  WHERE RowID  =  @RowCount 
+	END
+	ELSE
+	BEGIN
+      UPDATE  @TSdosCtas SET IMP_DIF_D_H  =  IMP_CARGO_C - IMP_ABONO_C
+	  WHERE RowID  =  @RowCount 
+	END
+
+    SET  @RowCount = @RowCount + 1
+  END
 
   MERGE CI_CAT_CTA_CONT AS TARGET
        USING (
@@ -105,7 +152,8 @@ BEGIN
 
   MERGE CI_BALANZA_OPER_CALC AS TARGET
        USING (
-	          SELECT CVE_EMPRESA, ANO_MES, CTA_CONTABLE, IMP_CARGO_C, IMP_ABONO_C  FROM  @TSdosCtas
+	          SELECT CVE_EMPRESA, ANO_MES, CTA_CONTABLE, IMP_CARGO_C, IMP_ABONO_C, IMP_DIF_D_H
+			  FROM  @TSdosCtas
 			 )  AS SOURCE 
           ON TARGET.CVE_EMPRESA     = SOURCE.CVE_EMPRESA  AND
              TARGET.ANO_MES         = SOURCE.ANO_MES      AND	
@@ -115,7 +163,7 @@ BEGIN
        UPDATE 
           SET IMP_CARGO  = SOURCE.IMP_CARGO_C,
 		      IMP_ABONO  = SOURCE.IMP_ABONO_C,
-			  SDO_FINAL  = SDO_INICIAL  + SOURCE.IMP_CARGO_C - SOURCE.IMP_ABONO_C 
+			  SDO_FINAL  = SDO_INICIAL  +  IMP_DIF_D_H
 
   WHEN NOT MATCHED BY TARGET THEN 
        INSERT (CVE_EMPRESA,
@@ -132,7 +180,7 @@ BEGIN
                0,
 		       SOURCE.IMP_CARGO_C,
 		       SOURCE.IMP_ABONO_C,
-		       SOURCE.IMP_CARGO_C - SOURCE.IMP_ABONO_C);
+		       IMP_DIF_D_H);
 
   END TRY
 

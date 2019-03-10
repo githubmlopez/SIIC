@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spConcSatFact
 END
 GO
---EXEC spConcSatFact 'CU','MARIO', '201812',1,2,' ',' '
+--EXEC spConcSatFact 'CU','MARIO', '201901',1,2,' ',' '
 CREATE PROCEDURE [dbo].[spConcSatFact]
 (
 --@pIdProceso       numeric(9),
@@ -57,7 +57,8 @@ BEGIN
 		  @k_efcomp_ing    varchar(1)   = 'I',
 		  @k_efcomp_rec    varchar(1)   = 'P',
 		  @k_no_conc       varchar(2)   = 'NC',
-		  @k_conciliado    varchar(2)   = 'CO'
+		  @k_conciliado    varchar(2)   = 'CO',
+		  @k_c_anterior    varchar(2)   = 'CT'
 -------------------------------------------------------------------------------
 -- Conciliación de Facturas 
 -------------------------------------------------------------------------------
@@ -75,38 +76,47 @@ BEGIN
 -----------------------------------------------------------------------------------------------------
 
   DELETE FROM CI_SAT_FACTURA WHERE
-  ANO_MES_PROC = @pAnoPeriodo  AND
-  B_AUTOMATICO = @k_falso
+  ANO_MES_PROC =  @pAnoPeriodo  AND
+  B_AUTOMATICO = 0 
   
-  UPDATE CI_SAT_FACTURA SET ID_CONCILIA_CXC = NULL WHERE 
-  ANO_MES_PROC = @pAnoPeriodo  AND
-  B_AUTOMATICO = @k_verdadero
+  UPDATE CI_SAT_FACTURA SET ID_CONCILIA_CXC = NULL, SIT_CONCILIA = NULL WHERE 
+  ANO_MES_PROC = @pAnoPeriodo  AND  B_AUTOMATICO = @k_verdadero
 
   INSERT  @TFacturas (RFC_CLIENTE, NOM_CLIENTE, F_OPERACION, ID_CONCILIA_CXC, IMP_F_NETO, SITUACION) 
-  SELECT  RFC_CLIENTE, NOM_CLIENTE, F_OPERACION, ID_CONCILIA_CXC, IMP_F_NETO, SIT_TRANSACCION
+  SELECT  RFC_CLIENTE, NOM_CLIENTE, F_OPERACION, ID_CONCILIA_CXC, IMP_F_NETO,
+  CASE
+  WHEN  ((dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION)) > @pAnoPeriodo AND f.SIT_TRANSACCION = @k_CANCELADA) AND
+         (dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) = @pAnoPeriodo))		  
+  THEN  @k_activa
+  WHEN  ((dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION)) = @pAnoPeriodo AND f.SIT_TRANSACCION = @k_CANCELADA) AND
+         (dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) < @pAnoPeriodo))		  
+  THEN  @k_c_anterior
+  ELSE  SIT_TRANSACCION
+  END AS SIT_TRANSACCON
   FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
   WHERE   f.CVE_EMPRESA           =  @pCveEmpresa     AND
           f.ID_VENTA              =  v.ID_VENTA       AND
           v.ID_CLIENTE            =  c.ID_CLIENTE     AND
           f.SERIE                <>  @k_legada        AND                                         
-        ((dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION))  = @pAnoPeriodo AND f.SIT_TRANSACCION     = @k_activa) OR
+       (((dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION))  = @pAnoPeriodo AND f.SIT_TRANSACCION     = @k_activa) OR
          (dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION)) = @pAnoPeriodo AND f.SIT_TRANSACCION = @k_CANCELADA)) OR
         ((dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION)) > @pAnoPeriodo AND f.SIT_TRANSACCION = @k_CANCELADA) AND
-         (dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) = @pAnoPeriodo))			  
-  UNION 
-  SELECT  RFC_CLIENTE, NOM_CLIENTE, F_OPERACION, ID_CONCILIA_CXC, IMP_F_NETO, @k_activa
-  FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
-  WHERE   f.CVE_EMPRESA   =  @pCveEmpresa     AND
-          f.ID_VENTA              =  v.ID_VENTA       AND
-          v.ID_CLIENTE            =  c.ID_CLIENTE     AND
-          f.SERIE                <>  @k_legada        AND
-    	  dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION))  = @pAnoPeriodo  AND                                         
-		 (f.SIT_TRANSACCION      =  @k_cancelada      AND
-	      dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION))  = @pAnoPeriodo)       
+         (dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) = @pAnoPeriodo)))		  
+  --UNION 
+  --SELECT  RFC_CLIENTE, NOM_CLIENTE, F_OPERACION, ID_CONCILIA_CXC, IMP_F_NETO, @k_activa
+  --FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
+  --WHERE   f.CVE_EMPRESA   =  @pCveEmpresa     AND
+  --        f.ID_VENTA              =  v.ID_VENTA       AND
+  --        v.ID_CLIENTE            =  c.ID_CLIENTE     AND
+  --        f.SERIE                <>  @k_legada        AND
+  --  	  dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION))  = @pAnoPeriodo  AND                                         
+		-- (f.SIT_TRANSACCION      =  @k_cancelada      AND
+	 --     dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION))  = @pAnoPeriodo)       
 
   SET @NunRegistros = @@ROWCOUNT
 -------------------------------------------------------------------------------------
 --  	SELECT ' num reg ' + CONVERT(varchar(12), @NunRegistros)
+--  SELECT * FROM @TFacturas
   SET @RowCount     = 1
   WHILE @RowCount <= @NunRegistros
   BEGIN
@@ -115,6 +125,7 @@ BEGIN
 		   @imp_f_neto = IMP_F_NETO, @situacion = SITUACION
 	FROM   @TFacturas  WHERE  RowID = @RowCount
 
+	SELECT @id_unico = ' '
     SELECT TOP(1) @id_unico = ID_UNICO FROM CI_SAT_FACTURA WHERE
 	RFC_RECEPTOR    =  @rfc_cliente  AND
 	IMP_FACTURA     =  @imp_f_neto   AND
@@ -122,7 +133,7 @@ BEGIN
 	ID_CONCILIA_CXC IS NULL          AND
 	EFECTO_COMPROB  =  @k_efcomp_ing AND
     dbo.fnArmaAnoMes (YEAR(F_EMISION), MONTH(F_EMISION))  =  @pAnoPeriodo
---	SELECT ' ID UNICO ' + CONVERT(varchar(12), @id_unico)
+--	SELECT ' ID UNICO ' + CONVERT(varchar(12), ISNULL(@id_unico,' ') )
 	BEGIN TRY
 
 	IF  ISNULL(@id_unico,' ') <> ' '
@@ -161,14 +172,13 @@ BEGIN
 	  @f_operacion,
 	  @imp_f_neto,
 	  ' ',
-	  ' ',
+	  @situacion,
 	  NULL,
 	  0,
 	  @pAnoPeriodo,
 	  @k_no_conc,
-	  @k_verdadero
+	  @k_falso
 	 )
-      SET @RowCount     =   @RowCount + 1
     END
 
 	END TRY
@@ -185,8 +195,9 @@ BEGIN
  
   END  			
 
-  IF  EXISTS (SELECT 1 FROM CI_SAT_FACTURA WHERE SIT_CONCILIA = @k_no_conc  AND
-              EFECTO_COMPROB <> @k_efcomp_rec)
+  IF  EXISTS (SELECT * FROM CI_SAT_FACTURA WHERE SIT_CONCILIA = @k_no_conc    AND
+              EFECTO_COMPROB <> @k_efcomp_rec AND ANO_MES_PROC = @pAnoPeriodo AND
+			  ESTATUS <>  @k_c_anterior)
   BEGIN
 	SET  @num_reg_proc = @num_reg_proc + 1 
 	SET  @pError    =  'Existen diferencias entre SAT y  FACTURAS '

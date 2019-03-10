@@ -27,9 +27,10 @@ CREATE PROCEDURE [dbo].[spLanzaProceso]
 @pError           varchar(80) OUT,
 @pMsgError        varchar(400) OUT
 )
+
 AS
 BEGIN
-
+--  select 'entro lanza tarea'
   DECLARE  @k_error      varchar(1) = 'E',
            @k_abierto    varchar(1) = 'A'
 
@@ -53,10 +54,8 @@ BEGIN
   @pAnoPeriodo,
   @id_tarea OUT, 
   @error OUT,
-  @msg_error OUT 
-
---  SELECT 'LANZO ', CONVERT(VARCHAR(5), @id_tarea) + ' ' + CONVERT(VARCHAR(5), @pIdProceso)
-
+  @msg_error OUT
+  
   SET @sql = N'EXEC ' + @pStoreProc +  
  N' @IdProceso_p,'     +
   '@id_tarea_p,'      +

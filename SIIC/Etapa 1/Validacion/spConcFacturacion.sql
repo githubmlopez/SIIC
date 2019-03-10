@@ -7,7 +7,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
---exec spConcFacturacion 'CU', 'MARIO', '201805', 12, 361, ' ', ' '
+--exec spConcFacturacion 'CU', 'MARIO', '201901', 12, 361, ' ', ' '
 ALTER PROCEDURE [dbo].[spConcFacturacion]   @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                             @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								            @pMsgError varchar(400) OUT
@@ -59,17 +59,17 @@ BEGIN
               f.SIT_TRANSACCION,
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCamb(f.F_OPERACION)
+			  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
 			  ELSE f.IMP_F_BRUTO
 			  END AS IMP_F_BRUTO,
 			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_IVA * dbo.fnObtTipoCamb(f.F_OPERACION)
+			  THEN f.IMP_F_IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
 			  ELSE f.IMP_F_IVA
 			  END AS IMP_F_IVA,
  			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_NETO * dbo.fnObtTipoCamb(f.F_OPERACION)
+			  THEN f.IMP_F_NETO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
 			  ELSE f.IMP_F_NETO
 			  END AS IMP_F_NETO
 	          FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
@@ -77,25 +77,25 @@ BEGIN
               f.ID_VENTA              =  v.ID_VENTA       AND
               v.ID_CLIENTE            =  c.ID_CLIENTE     AND
               f.SERIE                <>  @k_legada        AND                                         
-	        ((dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION))  = @pAnoMes AND f.SIT_TRANSACCION     = @k_activa) OR
+	       (((dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION))  = @pAnoMes AND f.SIT_TRANSACCION     = @k_activa) OR
              (dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION)) = @pAnoMes AND f.SIT_TRANSACCION = @k_CANCELADA)) OR
             ((dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION)) > @pAnoMes AND f.SIT_TRANSACCION = @k_CANCELADA) AND
-	         (dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) = @pAnoMes))			  
+	         (dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) = @pAnoMes)))			  
 			  UNION 
 			  SELECT f.CVE_EMPRESA, f.SERIE, f.ID_CXC, c.ID_CLIENTE, c.NOM_CLIENTE, f.F_OPERACION, @k_activa,
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCamb(f.F_OPERACION)
+			  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
 			  ELSE f.IMP_F_BRUTO
 			  END AS IMP_F_BRUTO,
 			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_IVA * dbo.fnObtTipoCamb(f.F_OPERACION)
+			  THEN f.IMP_F_IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
 			  ELSE f.IMP_F_IVA
 			  END AS IMP_F_IVA,
  			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_NETO * dbo.fnObtTipoCamb(f.F_OPERACION)
+			  THEN f.IMP_F_NETO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
 			  ELSE f.IMP_F_NETO
 			  END AS IMP_F_NETO
 	          FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c

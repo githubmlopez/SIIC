@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spCargaSatFact
 END
 GO
---EXEC spCargaSatFact 'CU','MARIO','201811',80,1,' ',' '
+--EXEC spCargaSatFact 'CU','MARIO','201901',94,1,' ',' '
 CREATE PROCEDURE [dbo].[spCargaSatFact]
 (
 --@pIdProceso       numeric(9),
@@ -69,7 +69,7 @@ BEGIN
   F_CERTIFICACION date           NOT NULL,
   IMP_FACTURA     numeric (16,2) NOT NULL,
   EFECTO_COMPROB  varchar (1)    NOT NULL,
-  ESTATUS         varchar (1)    NOT NULL,
+  ESTATUS         varchar (1)    NULL,
   F_CANCELACION   date           NULL
   )
 
@@ -125,7 +125,7 @@ BEGIN
   @f_dummy,
   0,
   ' ',
-  ' ',
+  NULL,
   NULL
   FROM CARGADOR.dbo.FC_CARGA_COL_DATO c WHERE
   ID_CLIENTE  = @pIdCliente  AND
@@ -299,7 +299,8 @@ BEGIN
     F_CANCELACION,
 	ANO_MES_PROC,
 	SIT_CONCILIA,
-	B_AUTOMATICO
+	B_AUTOMATICO, 
+	CVE_CONC_MAN
     )
     SELECT 
     ID_UNICO,
@@ -316,7 +317,8 @@ BEGIN
     F_CANCELACION,
 	@pAnoPeriodo,
 	@k_no_conc,
-	@k_verdadero
+	@k_verdadero,
+	NULL
     FROM  @TvpSatFact
   END
   ELSE
@@ -339,7 +341,8 @@ BEGIN
 	ID_CXP_DET,
 	SIT_CONCILIA,
 	ANO_MES_PROC,
-	B_AUTOMATICO
+	B_AUTOMATICO,
+	CVE_CONC_MAN
     )
     SELECT 
     ID_UNICO,
@@ -358,7 +361,8 @@ BEGIN
 	NULL,
 	@k_no_conc,
 	@pAnoPeriodo,
-	@k_verdadero
+	@k_verdadero,
+	NULL
     FROM  @TvpSatFact
 
   END
@@ -367,7 +371,7 @@ BEGIN
   BEGIN CATCH
     SET  @pError    =  'Error Carga de Facturas SAT'
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
---    SELECT @pMsgError
+    SELECT @pMsgError
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
   END CATCH
 

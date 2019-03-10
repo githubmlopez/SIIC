@@ -177,13 +177,14 @@ BEGIN
 --01 'IMBP', Importe Bruto Pesos
   0,
 --02 'IMIP', Importe IVA Pesos
-  CASE
-  --WHEN  ch.CVE_MONEDA = @k_dolar AND t.CVE_TIPO_CONT = @k_iva
-  --THEN  m.IMP_TRANSACCION * dbo.fnObtTipoCamb(m.F_OPERACION)
-  WHEN  ch.CVE_MONEDA = @k_peso AND t.CVE_TIPO_CONT = @k_iva
-  THEN  m.IMP_TRANSACCION
-  ELSE  0
-  END,
+  --CASE
+  ----WHEN  ch.CVE_MONEDA = @k_dolar AND t.CVE_TIPO_CONT = @k_iva
+  ----THEN  m.IMP_TRANSACCION * dbo.fnObtTipoCamb(m.F_OPERACION)
+  --WHEN  ch.CVE_MONEDA = @k_peso AND t.CVE_TIPO_CONT = @k_iva
+  --THEN  m.IMP_TRANSACCION
+  --ELSE  0
+  --END,
+  0,
 --03 'IMNP', Importe Neto Pesos
   CASE
   WHEN    ch.CVE_MONEDA  =  @k_peso
@@ -198,11 +199,12 @@ BEGIN
 --05 'IMBD', Importe Bruto Dólares
   0,
 --06 'IMID', Importe IVA Dólares
-  CASE
-  WHEN  ch.CVE_MONEDA = @k_dolar AND t.CVE_TIPO_CONT = @k_iva
-  THEN  m.IMP_TRANSACCION * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, m.F_OPERACION)
-  ELSE  0
-  END,
+  --CASE
+  --WHEN  ch.CVE_MONEDA = @k_dolar AND t.CVE_TIPO_CONT = @k_iva
+  --THEN  m.IMP_TRANSACCION * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, m.F_OPERACION)
+  --ELSE  0
+  --END,
+  0,
 --07 'IMND', Importe Neto Dólares
   CASE
   WHEN   ch.CVE_MONEDA   =  @k_dolar

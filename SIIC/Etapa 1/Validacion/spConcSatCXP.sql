@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spConcSatCXP
 END
 GO
---EXEC spConcSatCXP 'CU','MARIO', '201812',1,2,' ',' '
+--EXEC spConcSatCXP 'CU','MARIO', '201901',1,2,' ',' '
 CREATE PROCEDURE [dbo].[spConcSatCXP]
 (
 --@pIdProceso       numeric(9),
@@ -63,7 +63,7 @@ BEGIN
 		  @k_f_inicial     date         = '2018-12-01'
 
 -------------------------------------------------------------------------------
--- Conciliación de Facturas 
+-- Conciliación de Cuentas Por Pagar
 -------------------------------------------------------------------------------
   DECLARE  @TCXP       TABLE
           (RowID            int  identity(1,1),
@@ -75,10 +75,6 @@ BEGIN
 		   IMP_F_NETO       numeric(16,2),
 		   SITUACION        varchar(2))
 
------------------------------------------------------------------------------------------------------
--- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
------------------------------------------------------------------------------------------------------
-
   DELETE FROM CI_SAT_CXP WHERE
   ANO_MES_PROC =  @pAnoPeriodo  AND
   B_AUTOMATICO =  @k_falso 
@@ -87,6 +83,10 @@ BEGIN
   WHERE 
   ANO_MES_PROC =  @pAnoPeriodo  AND
   B_AUTOMATICO =  @k_verdadero 
+
+-----------------------------------------------------------------------------------------------------
+-- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
+-----------------------------------------------------------------------------------------------------
 
   INSERT  @TCXP (RFC_PROVEEDOR, NOM_PROVEEDOR, F_OPERACION, ID_CXP, ID_CXP_DET,
                  IMP_F_NETO, SITUACION) 
@@ -132,52 +132,74 @@ BEGIN
 
 	SET @id_unico = ' '
 
+-- Busca en archivo SAT si existe el registro de CXP
     SELECT TOP(1) @id_unico = ID_UNICO FROM CI_SAT_CXP  WHERE
-	RFC_EMISOR      =  @rfc_proveedor  AND
-	IMP_FACTURA     =  @imp_f_neto     AND
-	ESTATUS         =  @situacion      AND
-	ID_CXP          IS NULL            AND
-   	EFECTO_COMPROB  =  @k_efcomp_ing   
+	RFC_EMISOR                =  @rfc_proveedor  AND
+	IMP_FACTURA               =  @imp_f_neto     AND
+	ESTATUS                   =  @situacion      AND
+	ID_CXP              IS NULL                  AND
+   	EFECTO_COMPROB            =  @k_efcomp_ing   AND
+	CVE_CONC_MAN        IS  NULL  
 
-	SELECT ' ID ' + @id_unico 
+	IF @rfc_proveedor = 'LUI520719MF2'
+	BEGIN
+ 	  SELECT ' ID ' + @id_unico 
+	  SELECT 'IMPORTE ' + CONVERT(VARCHAR(10), @imp_f_neto)
+	  SELECT 'SIT ' + @situacion
+	  SELECT 'EFECTO  ' + @k_efcomp_ing
+    END
 
 	BEGIN TRY
 
 	IF  ISNULL(@id_unico,' ') <> ' '
 	BEGIN
+-- Encuentra registro y actuliza registro del SAT con los datos de la CXP
       UPDATE CI_SAT_CXP
 	  SET ID_CXP       = @id_cxp,
 	      ID_CXP_DET   = @id_cxp_det,
-		  SIT_CONCILIA = @k_conciliado
-	  WHERE ID_UNICO = @id_unico
+		  SIT_CONCILIA = @k_conciliado 
+	  WHERE ID_UNICO = @id_unico   
 
-      IF  @id_cxp_det = 0 
+	  IF  EXISTS(SELECT 1 FROM CI_SAT_CXP WHERE               
+	             ID_CXP       =  @id_cxp     AND
+				 ID_CXP_DET   =  @id_cxp_det AND
+				 B_AUTOMATICO =  @k_falso)
 	  BEGIN
-	    IF  EXISTS (SELECT 1 FROM CI_SAT_CXP WHERE 
-		            ID_CXP       =  @id_cxp  AND
-					ID_CXP_DET   = 0         AND
-					B_AUTOMATICO = @k_falso)
-		BEGIN
-          UPDATE CI_SAT_CXP
-	      SET ID_CXP       = @id_cxp,
-	          ID_CXP_DET   = 0,
-		      SIT_CONCILIA = @k_conciliado
-		END
+         UPDATE CI_SAT_CXP
+         SET SIT_CONCILIA = @k_conciliado
+		 WHERE 
+		 ID_CXP     =  @id_cxp      AND
+		 ID_CXP_DET =  @id_cxp_det  AND
+		 B_AUTOMATICO =  @k_falso
 	  END
-	  ELSE
-	  BEGIN
-	  	IF  EXISTS (SELECT 1 FROM CI_SAT_CXP WHERE 
-		            ID_CXP     = @id_cxp  AND
-					ID_CXP_DET = 0         AND
-					B_AUTOMATICO = @k_falso)
-		BEGIN
-          UPDATE CI_SAT_CXP
-	      SET ID_CXP       = @id_cxp,
-	          ID_CXP_DET   = 0,
-		  SIT_CONCILIA = @k_conciliado
-	    END
-	   END
-      END 
+    
+  --    IF  @id_cxp_det = 0 
+	 -- BEGIN
+	 --   IF  EXISTS (SELECT 1 FROM CI_SAT_CXP WHERE 
+		--            ID_CXP       = @id_cxp  AND
+		--			ID_CXP_DET   = 0        AND
+		--			B_AUTOMATICO = @k_falso)
+		--BEGIN
+  --        UPDATE CI_SAT_CXP
+	 --     SET ID_CXP       = @id_cxp,
+	 --         ID_CXP_DET   = 0,
+		--      SIT_CONCILIA = @k_conciliado
+		--END
+	 -- END
+	 -- ELSE
+	 -- BEGIN
+	 -- 	IF  EXISTS (SELECT 1 FROM CI_SAT_CXP WHERE 
+		--            ID_CXP     = @id_cxp  AND
+		--			ID_CXP_DET = 0         AND
+		--			B_AUTOMATICO = @k_falso)
+		--BEGIN
+  --        UPDATE CI_SAT_CXP
+	 --     SET ID_CXP       = @id_cxp,
+	 --         ID_CXP_DET   = 0,
+		--  SIT_CONCILIA = @k_conciliado
+	 --   END
+	 -- END
+    END 
 	ELSE
 	BEGIN
 --	  SELECT 'INSERTO'
@@ -212,8 +234,8 @@ BEGIN
 	  ' ',
 	  @situacion,
 	  NULL,
-	  @id_cxp,
-	  @id_cxp_det,
+	  NULL,
+	  NULL,
 	  @k_no_conc,
 	  @pAnoPeriodo,
 	  @k_falso
@@ -228,12 +250,13 @@ BEGIN
       SELECT @pMsgError
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
     END CATCH
+
     SET @RowCount     =  @RowCount + 1
     EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @RowCount
   END  			
 
-  IF  EXISTS (SELECT 1 FROM CI_SAT_CXP WHERE SIT_CONCILIA = @k_no_conc AND
-              EFECTO_COMPROB <> @k_efcomp_rec)
+  IF  EXISTS (SELECT * FROM CI_SAT_CXP WHERE SIT_CONCILIA = @k_no_conc    AND
+              EFECTO_COMPROB <> @k_efcomp_rec AND ANO_MES_PROC = @pAnoPeriodo)
   BEGIN
 	SET  @num_reg_proc = @num_reg_proc + 1 
 	SET  @pError    =  'Existen diferencias entre SAT y CXP '
