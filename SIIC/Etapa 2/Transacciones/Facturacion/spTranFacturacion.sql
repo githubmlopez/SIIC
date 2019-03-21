@@ -179,7 +179,7 @@ BEGIN
 
 --  SELECT ' **TERMINE DE CONTAR** ' -----
   DECLARE cur_transaccion CURSOR LOCAL FORWARD_ONLY STATIC FOR SELECT
-	
+-- dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)	
 --01 'IMBP', Importe Bruto Pesos
   CASE
   WHEN    f.CVE_F_MONEDA  =  @k_peso
@@ -201,19 +201,23 @@ BEGIN
 --04 'IMCP', Importe Complementario Pesos
   CASE
   WHEN    f.CVE_F_MONEDA  =  @k_dolar
-  THEN   (f.IMP_F_NETO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION)) - f.IMP_F_NETO
+  THEN   (f.IMP_F_NETO *
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)) - 
+  f.IMP_F_NETO
   ELSE    0
   END,
 --05 'IMBD', Importe Bruto Dólares
   CASE
   WHEN    f.CVE_F_MONEDA  =  @k_dolar
-  THEN    IMP_F_BRUTO  * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION)
+  THEN    IMP_F_BRUTO  *
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)	
   ELSE    0
   END,
 --06 'IMID', Importe IVA Dólares
   CASE
   WHEN    f.CVE_F_MONEDA  =  @k_dolar
-  THEN    IMP_F_IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION)
+  THEN    IMP_F_IVA * 
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)	
   ELSE    0
   END,
 --07 'IMND', Importe Neto Dólares

@@ -11,7 +11,7 @@ BEGIN
   DROP  PROCEDURE spCargaFile
 END
 GO
--- exec spCargaFile 3,1,'MARIO',1,'CU','CARGAINF','201902',' ',' '
+-- exec spCargaFile 2,1,'MARIO',1,'CU','CARGAINF','201902',' ',' '
 CREATE PROCEDURE [dbo].[spCargaFile] 
 (
 @pIdProceso     numeric(9),	

@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spConcSatCXP
 END
 GO
---EXEC spConcSatCXP 'CU','MARIO', '201901',1,2,' ',' '
+--EXEC spConcSatCXP 'CU','MARIO', '201902',1,2,' ',' '
 CREATE PROCEDURE [dbo].[spConcSatCXP]
 (
 --@pIdProceso       numeric(9),
@@ -60,7 +60,14 @@ BEGIN
 		  @k_falso         varchar(1)   = 0,
 		  @k_no_conc       varchar(2)   = 'NC',
 		  @k_conciliado    varchar(2)   = 'CO',
-		  @k_f_inicial     date         = '2018-12-01'
+		  @k_f_inicial     date         = '2018-12-01',
+		  @k_cerrado       varchar(1)   = 'C'
+
+  IF  (SELECT SIT_PERIODO FROM CI_PERIODO_CONTA WHERE 
+       CVE_EMPRESA = @pCveEmpresa   AND
+	   ANO_MES     = @pAnoPeriodo)  <>  @k_cerrado
+
+  BEGIN
 
 -------------------------------------------------------------------------------
 -- Conciliación de Cuentas Por Pagar
@@ -77,12 +84,16 @@ BEGIN
 
   DELETE FROM CI_SAT_CXP WHERE
   ANO_MES_PROC =  @pAnoPeriodo  AND
-  B_AUTOMATICO =  @k_falso 
+  B_AUTOMATICO =  @k_falso      
 
-  UPDATE CI_SAT_CXP SET ID_CXP = NULL, ID_CXP_DET = NULL
+  UPDATE CI_SAT_CXP SET ID_CXP = NULL, ID_CXP_DET = NULL, ANO_MES_CONC = NULL
+  WHERE 
+  ANO_MES_CONC =  @pAnoPeriodo 
+ 
+  UPDATE CI_SAT_CXP SET ID_CXP = NULL, ID_CXP_DET = NULL, ANO_MES_CONC = NULL
   WHERE 
   ANO_MES_PROC =  @pAnoPeriodo  AND
-  B_AUTOMATICO =  @k_verdadero 
+  B_AUTOMATICO =  @k_verdadero  
 
 -----------------------------------------------------------------------------------------------------
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
@@ -117,7 +128,7 @@ BEGIN
 
   SET @NunRegistros = @@ROWCOUNT
 -------------------------------------------------------------------------------------
-  SELECT * FROM @TCXP
+--  SELECT * FROM @TCXP
   SET @RowCount     = 1
   WHILE @RowCount <= @NunRegistros
   BEGIN
@@ -141,23 +152,24 @@ BEGIN
    	EFECTO_COMPROB            =  @k_efcomp_ing   AND
 	CVE_CONC_MAN        IS  NULL  
 
-	IF @rfc_proveedor = 'LUI520719MF2'
-	BEGIN
- 	  SELECT ' ID ' + @id_unico 
-	  SELECT 'IMPORTE ' + CONVERT(VARCHAR(10), @imp_f_neto)
-	  SELECT 'SIT ' + @situacion
-	  SELECT 'EFECTO  ' + @k_efcomp_ing
-    END
+	--IF @rfc_proveedor = 'DEM8801152E9'
+	--BEGIN
+ --	  SELECT ' ID ' + @id_unico 
+	--  SELECT 'IMPORTE ' + CONVERT(VARCHAR(10), @imp_f_neto)
+	--  SELECT 'SIT ' + @situacion
+	--  SELECT 'EFECTO  ' + @k_efcomp_ing
+ --   END
 
 	BEGIN TRY
 
-	IF  ISNULL(@id_unico,' ') <> ' '
+	IF  ISNULL(@id_unico,' ') <> ' ' 
 	BEGIN
 -- Encuentra registro y actuliza registro del SAT con los datos de la CXP
       UPDATE CI_SAT_CXP
 	  SET ID_CXP       = @id_cxp,
 	      ID_CXP_DET   = @id_cxp_det,
-		  SIT_CONCILIA = @k_conciliado 
+		  SIT_CONCILIA = @k_conciliado,
+		  ANO_MES_CONC = @pAnoPeriodo 
 	  WHERE ID_UNICO = @id_unico   
 
 	  IF  EXISTS(SELECT 1 FROM CI_SAT_CXP WHERE               
@@ -166,10 +178,11 @@ BEGIN
 				 B_AUTOMATICO =  @k_falso)
 	  BEGIN
          UPDATE CI_SAT_CXP
-         SET SIT_CONCILIA = @k_conciliado
+         SET SIT_CONCILIA = @k_conciliado,
+		     ANO_MES_CONC = @pAnoPeriodo
 		 WHERE 
-		 ID_CXP     =  @id_cxp      AND
-		 ID_CXP_DET =  @id_cxp_det  AND
+		 ID_CXP       =  @id_cxp      AND
+		 ID_CXP_DET   =  @id_cxp_det  AND
 		 B_AUTOMATICO =  @k_falso
 	  END
     
@@ -262,6 +275,15 @@ BEGIN
 	SET  @pError    =  'Existen diferencias entre SAT y CXP '
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
+  END
+
+  END
+  ELSE
+  BEGIN
+    SET  @pError    =  'El Periodo esta cerrado '
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    SELECT @pMsgError
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
   END
 
 END

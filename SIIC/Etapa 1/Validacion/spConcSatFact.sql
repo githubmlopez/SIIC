@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spConcSatFact
 END
 GO
---EXEC spConcSatFact 'CU','MARIO', '201901',1,2,' ',' '
+--EXEC spConcSatFact 'CU','MARIO', '201902',1,2,' ',' '
 CREATE PROCEDURE [dbo].[spConcSatFact]
 (
 --@pIdProceso       numeric(9),
@@ -58,7 +58,9 @@ BEGIN
 		  @k_efcomp_rec    varchar(1)   = 'P',
 		  @k_no_conc       varchar(2)   = 'NC',
 		  @k_conciliado    varchar(2)   = 'CO',
-		  @k_c_anterior    varchar(2)   = 'CT'
+		  @k_c_anterior    varchar(2)   = 'CT',
+ 		  @k_cerrado       varchar(1)   = 'C'
+
 -------------------------------------------------------------------------------
 -- Conciliación de Facturas 
 -------------------------------------------------------------------------------
@@ -70,6 +72,12 @@ BEGIN
 		   ID_CONCILIA_CXC  int,
 		   IMP_F_NETO       numeric(16,2),
 		   SITUACION        varchar(2))
+
+  IF  (SELECT SIT_PERIODO FROM CI_PERIODO_CONTA WHERE 
+       CVE_EMPRESA = @pCveEmpresa   AND
+	   ANO_MES     = @pAnoPeriodo)  <>  @k_cerrado
+
+  BEGIN
 
 -----------------------------------------------------------------------------------------------------
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
@@ -115,7 +123,7 @@ BEGIN
 
   SET @NunRegistros = @@ROWCOUNT
 -------------------------------------------------------------------------------------
---  	SELECT ' num reg ' + CONVERT(varchar(12), @NunRegistros)
+--  SELECT ' num reg ' + CONVERT(varchar(12), @NunRegistros)
 --  SELECT * FROM @TFacturas
   SET @RowCount     = 1
   WHILE @RowCount <= @NunRegistros
@@ -125,15 +133,16 @@ BEGIN
 		   @imp_f_neto = IMP_F_NETO, @situacion = SITUACION
 	FROM   @TFacturas  WHERE  RowID = @RowCount
 
-	SELECT @id_unico = ' '
+	SET @id_unico = ' '
     SELECT TOP(1) @id_unico = ID_UNICO FROM CI_SAT_FACTURA WHERE
 	RFC_RECEPTOR    =  @rfc_cliente  AND
 	IMP_FACTURA     =  @imp_f_neto   AND
 	ESTATUS         =  @situacion    AND
 	ID_CONCILIA_CXC IS NULL          AND
 	EFECTO_COMPROB  =  @k_efcomp_ing AND
+    @situacion     <>  @k_c_anterior AND
     dbo.fnArmaAnoMes (YEAR(F_EMISION), MONTH(F_EMISION))  =  @pAnoPeriodo
---	SELECT ' ID UNICO ' + CONVERT(varchar(12), ISNULL(@id_unico,' ') )
+--	SELECT ' SIT ' + @situacion + ' ' + CONVERT(VARCHAR(100), @id_unico)
 	BEGIN TRY
 
 	IF  ISNULL(@id_unico,' ') <> ' '
@@ -162,7 +171,7 @@ BEGIN
 	  ANO_MES_PROC,
 	  SIT_CONCILIA,
 	  B_AUTOMATICO) VALUES
-     (@id_concilia_cxc,
+     (CONVERT(VARCHAR(10),@id_concilia_cxc) + '-' + @situacion,
 	  @rfc_cliente,
 	  @nom_cliente,
 	  ' ',
@@ -179,7 +188,8 @@ BEGIN
 	  @k_no_conc,
 	  @k_falso
 	 )
-    END
+
+	END
 
 	END TRY
 
@@ -205,6 +215,16 @@ BEGIN
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
   END
+
+  END
+  ELSE
+  BEGIN
+    SET  @pError    =  'El Periodo esta cerrado '
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    SELECT @pMsgError
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+  END
+
 
 END
 

@@ -7,7 +7,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
---exec spConcFacturacion 'CU', 'MARIO', '201901', 12, 361, ' ', ' '
+--exec spConcFacturacion 'CU', 'MARIO', '201902', 12, 361, ' ', ' '
 ALTER PROCEDURE [dbo].[spConcFacturacion]   @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                             @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								            @pMsgError varchar(400) OUT
@@ -59,17 +59,26 @@ BEGIN
               f.SIT_TRANSACCION,
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+			  THEN 
+			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+			  ELSE 0
+			  END AS TIPO_CAMBIO,
+	          CASE
+			  WHEN f.CVE_F_MONEDA  =  @k_dolar
+			  THEN f.IMP_F_BRUTO *
+			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
 			  ELSE f.IMP_F_BRUTO
 			  END AS IMP_F_BRUTO,
 			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+			  THEN f.IMP_F_IVA *
+			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
 			  ELSE f.IMP_F_IVA
 			  END AS IMP_F_IVA,
  			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_NETO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+			  THEN f.IMP_F_NETO * 
+			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
 			  ELSE f.IMP_F_NETO
 			  END AS IMP_F_NETO
 	          FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
@@ -85,17 +94,27 @@ BEGIN
 			  SELECT f.CVE_EMPRESA, f.SERIE, f.ID_CXC, c.ID_CLIENTE, c.NOM_CLIENTE, f.F_OPERACION, @k_activa,
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+			  THEN 
+			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+			  ELSE 0
+			  END AS TIPO_CAMBIO,
+
+	          CASE
+			  WHEN f.CVE_F_MONEDA  =  @k_dolar
+			  THEN f.IMP_F_BRUTO * 
+              dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
 			  ELSE f.IMP_F_BRUTO
 			  END AS IMP_F_BRUTO,
 			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+			  THEN f.IMP_F_IVA *
+			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
 			  ELSE f.IMP_F_IVA
 			  END AS IMP_F_IVA,
  			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
-			  THEN f.IMP_F_NETO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+			  THEN f.IMP_F_NETO *
+              dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
 			  ELSE f.IMP_F_NETO
 			  END AS IMP_F_NETO
 	          FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
@@ -119,7 +138,8 @@ BEGIN
        UPDATE 
           SET IMP_BRUTO_C      = SOURCE.IMP_F_BRUTO,
 		      IMP_IMPUESTO_C   = SOURCE.IMP_F_IVA,
-		      IMP_NETO_C       = SOURCE.IMP_F_NETO
+		      IMP_NETO_C       = SOURCE.IMP_F_NETO,
+			  TIPO_CAMBIO      = SOURCE.TIPO_CAMBIO
 
   WHEN NOT MATCHED  BY TARGET THEN 
        INSERT (CVE_EMPRESA,
@@ -174,8 +194,8 @@ BEGIN
   BEGIN
     SET  @num_reg_proc = @num_reg_proc + 1 
 	SET  @pError    =  'Existen diferencias entre CONTPAQ y  ERP '
---    SELECT @pError
-    SET  @pMsgError =  LTRIM(@pError + '==> ' + ERROR_MESSAGE())
+--    SELECT 'E1 ' + @pError
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(),' '))
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
   END
   ELSE
@@ -218,7 +238,7 @@ BEGIN
   BEGIN CATCH
     SET  @pError    =  'Error Act Conciliacion Contpaq'
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
---    SELECT @pMsgError
+--    SELECT 'E2 ' + @pMsgError
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
   END CATCH
   EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @num_reg_proc

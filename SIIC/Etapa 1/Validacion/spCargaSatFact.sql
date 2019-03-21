@@ -12,7 +12,9 @@ BEGIN
   DROP  PROCEDURE spCargaSatFact
 END
 GO
---EXEC spCargaSatFact 'CU','MARIO','201901',94,1,' ',' '
+-- 94 FACTURAS
+-- 93 CXP
+--EXEC spCargaSatFact 'CU','MARIO','201902',93,1,' ',' '
 CREATE PROCEDURE [dbo].[spCargaSatFact]
 (
 --@pIdProceso       numeric(9),
@@ -54,7 +56,14 @@ BEGIN
 		  @k_error       varchar(1) = 'E',
 		  @k_factura     int        = 30,
 		  @k_CXP         int        = 20,
-		  @k_no_conc     varchar(2) = 'NC'
+		  @k_no_conc     varchar(2) = 'NC',
+		  @k_cerrado     varchar(1) = 'C'
+
+  IF  (SELECT SIT_PERIODO FROM CI_PERIODO_CONTA WHERE 
+       CVE_EMPRESA = @pCveEmpresa   AND
+	   ANO_MES     = @pAnoPeriodo)  <>  @k_cerrado
+
+  BEGIN
 
   DECLARE @TvpSatFact TABLE
  (
@@ -376,5 +385,15 @@ BEGIN
   END CATCH
 
   EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @cont_regist
+
+  END
+  ELSE
+  BEGIN
+    SET  @pError    =  'El Periodo esta cerrado '
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    SELECT @pMsgError
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+  END
+
 END
 

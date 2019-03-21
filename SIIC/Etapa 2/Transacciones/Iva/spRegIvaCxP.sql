@@ -32,6 +32,7 @@ BEGIN
            @k_verdadero       bit          = 1,
 		   @k_falso           bit          = 0,
 		   @k_devengado       varchar(6)   = 'MPDEVE',
+		   @k_com_banc        varchar(6)   = 'MPCOBA',
 		   @k_iva             numeric(6,4) = .16
 
   DECLARE  @imp_ajuste        numeric(3,2)
@@ -68,9 +69,9 @@ BEGIN
   UNION
   SELECT  cp.ID_CXP, cp.F_CAPTURA, cp.CVE_MONEDA, i.IVA, i.IMP_BRUTO, i.TX_NOTA, cp.TX_NOTA, i.RFC, cp.ID_PROVEEDOR, cp.B_FACTURA, i.B_FACTURA
   FROM    CI_CUENTA_X_PAGAR cp, CI_ITEM_C_X_P i
-  WHERE   cp.CVE_EMPRESA       =  i.CVE_EMPRESA       AND
-		  cp.ID_CXP            =  i.ID_CXP            AND
-		  cp.CVE_CHEQUERA      =  @k_devengado        AND
+  WHERE   cp.CVE_EMPRESA       =  i.CVE_EMPRESA               AND
+		  cp.ID_CXP            =  i.ID_CXP                    AND
+		  cp.CVE_CHEQUERA      in (@k_devengado, @k_com_banc) AND
 		  dbo.fnArmaAnoMes (YEAR(cp.F_CAPTURA), MONTH(cp.F_CAPTURA))  = @pAnoMes 
 
   SET @NunRegistros = @@ROWCOUNT

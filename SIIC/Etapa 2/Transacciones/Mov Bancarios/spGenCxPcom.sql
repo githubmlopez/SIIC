@@ -1,6 +1,6 @@
 USE [ADMON01]
 GO
-/****** Calcula faltas por periodo ******/
+/****** Crea regisro de Cuentas por pagar por IVA Bancario ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -10,7 +10,7 @@ BEGIN
   DROP  PROCEDURE spGenCxPcom
 END
 GO
---EXEC spGenCxPcom 1,1,1,'CU','NOMINA','S','201801',1,0,' ',' '
+--EXEC spGenCxPcom 'CU', 'MLOPEZ', '201902', 1, 2, ' ', ' '
 CREATE PROCEDURE [dbo].[spGenCxPcom]
 (
  @pCveEmpresa varchar(4),
@@ -20,6 +20,7 @@ CREATE PROCEDURE [dbo].[spGenCxPcom]
  @pIdTarea    numeric(9),
  @pError      varchar(80) OUT,
  @pMsgError   varchar(400) OUT )
+
 AS
 BEGIN
 
@@ -51,7 +52,7 @@ BEGIN
 		m.SIT_MOVTO           = @k_activo         AND
         t.CVE_TIPO_CONT      IN (@k_comision)     GROUP BY ch.CVE_CHEQUERA
 		HAVING SUM(IMP_TRANSACCION) <> 0
-
+-- 
   INSERT @TCheqIva 
   SELECT ch.CVE_CHEQUERA, SUM(IMP_TRANSACCION) 
   FROM CI_MOVTO_BANCARIO m, CI_TIPO_MOVIMIENTO t, CI_CHEQUERA ch 
@@ -70,22 +71,24 @@ BEGIN
 
   WHEN MATCHED THEN
        UPDATE 
-          SET TARGET.IMP_IVA  = SOURCE.IMP_IVA
+          SET TARGET.IMP_IVA  = SOURCE.IMP_IVA;
 
-  WHEN NOT MATCHED BY TARGET THEN 
-       UPDATE 
-          SET TARGET.IMP_IVA  = 0;
+  --WHEN NOT MATCHED BY TARGET THEN 
+  --     UPDATE 
+  --        SET TARGET.IMP_IVA  = 0;
   END TRY
 
-  BEGIN CATCH
+  BEGIN CATCH	
     SET  @pError    =  'Error ' + '(P) ' + ERROR_PROCEDURE() 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
   END CATCH
 
-  IF  EXISTS(SELECT 1 FROM @TCheqComis WHERE IMP_IVA = 0)
-  BEGIN
-  END
+  SELECT * FROM @TCheqComis
+
+  --IF  EXISTS(SELECT 1 FROM @TCheqComis WHERE IMP_IVA = 0)
+  --BEGIN
+  --END
 
 END
 

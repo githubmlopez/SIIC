@@ -836,6 +836,16 @@ BEGIN
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
   END
+
+  IF  NOT EXISTS (SELECT 1 FROM CI_COM_FISC_CONTPAQ c WHERE
+				  c.CVE_EMPRESA =  @pCveEmpresa   AND
+				  ANO_MES       =  @pAnoMes)
+  BEGIN
+    SET @num_reg_proc = @num_reg_proc + 1  
+	SET  @pError    =  'No existen de CONTPAQ a CONCILIAR  ' + ISNULL(@pAnoMes, ' ')   
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
+  END
 END
 
 

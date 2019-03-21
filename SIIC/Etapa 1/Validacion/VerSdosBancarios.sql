@@ -6,7 +6,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
--- exec spVerSdosBancarios  'CU', 'MLOPEZ', '201805', 12,371, ' ', ' '
+-- exec spVerSdosBancarios  'CU', 'MLOPEZ', '201902', 12,371, ' ', ' '
 ALTER PROCEDURE [dbo].[spVerSdosBancarios] @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                            @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								           @pMsgError varchar(400) OUT
@@ -160,6 +160,7 @@ BEGIN
   SET @NunRegistros = @@ROWCOUNT
 -----------------------------------------------------------------------------------------------------
   SET @RowCount     = 1
+
   WHILE @RowCount <= @NunRegistros
   BEGIN
     SELECT @cve_chequera  = CVE_CHEQUERA, @cve_ind_cargo = CVE_IND_CARGO,
@@ -169,20 +170,18 @@ BEGIN
     SET @cargos  =  0
 	SET @abonos  =  0
 
-	SELECT @cargos  =  SUM(IMP_TRANSACCION)  FROM CI_MOVTO_BANCARIO WHERE 
+	SELECT @cargos  =  isnull(SUM(IMP_TRANSACCION),0)  FROM CI_MOVTO_BANCARIO WHERE 
 	CVE_CHEQUERA    =  @cve_chequera  AND
 	CVE_CARGO_ABONO =  @k_cargo       AND
 	ANO_MES         =  @pAnoMes       AND
 	SIT_MOVTO       =  @k_activo
-
 	EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @cve_ind_cargo,  @cargos, @k_no_act
 
-    SELECT @abonos  =  SUM(IMP_TRANSACCION)  FROM CI_MOVTO_BANCARIO WHERE 
+    SELECT @abonos  =  isnull(SUM(IMP_TRANSACCION),0)  FROM CI_MOVTO_BANCARIO WHERE 
 	CVE_CHEQUERA    =  @cve_chequera  AND
 	CVE_CARGO_ABONO =  @k_abono       AND
 	ANO_MES         =  @pAnoMes       AND
 	SIT_MOVTO       =  @k_activo
-
 	EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @cve_ind_abono,  @abonos, @k_no_act
 
 	SET @RowCount   = @RowCount + 1

@@ -1,7 +1,7 @@
 USE [ADMON01]
 GO
 
---exec spFacturacion  'CU', '20180101','20180131', '201801'
+--exec spFacturacion  'CU', '20190201','20190128', '201902'
 --DROP PROCEDURE spFacturacion
 SET ANSI_NULLS ON
 GO
@@ -35,7 +35,14 @@ BEGIN
    CONVERT(VARCHAR(12),f.IMP_F_IVA) AS IMP_F_IVA,
    CONVERT(VARCHAR(12),f.IMP_F_NETO) AS IMP_F_NETO,
    f.CVE_F_MONEDA,
-   CONVERT(VARCHAR(12),dbo.fnCalculaPesosC(@pCveEmpresa, @ano_mes_ant, f.F_OPERACION, f.IMP_F_NETO, CVE_F_MONEDA)) AS IMP_PESOS,  
+   CASE 
+   WHEN f.CVE_F_MONEDA = @k_dolar
+   THEN
+   CONVERT(VARCHAR(12),
+   dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION) *
+   f.IMP_F_NETO)
+   ELSE CONVERT(VARCHAR(12),f.IMP_F_NETO)
+   END AS IMP_PESOS,
    i.IMP_BRUTO_ITEM, SIT_TRANSACCION 
    from CI_FACTURA f, CI_ITEM_C_X_C i, CI_SUBPRODUCTO s, CI_PRODUCTO p, CI_VENTA v, CI_VENDEDOR ve, CI_CLIENTE c     
    where dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION))  = @pAnoMes AND 
