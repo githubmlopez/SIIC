@@ -44,78 +44,71 @@ BEGIN
   DECLARE  @cve_concepto      varchar(4)    =  ' ',
            @imp_concepto      int           =  0,
 		   @tot_ing_grab      numeric(16,2) =  0,
-		   @imp_isr           numeric(16,2) =  0,
-		   @imp_subsidio      numeric(16,2) =  0,
-		   @imp_isr_sub       numeric(16,2) =  0,
+		   @tot_sdo_per       numeric(16,2) =  0,
 		   @gpo_transaccion   int           =  0,
-		   @ano_mes           varchar(6)    =  ' ',
-           @b_fin_mes         bit           =  0,
-		   @imp_grab_mensual  numeric(16,2) =  0,
-		   @imp_isr_men       numeric(16,2) =  0,
-		   @imp_sub_men       numeric(16,2) =  0
+           @cve_tipo_ajuste   varchar(1)    =  ' ',
+		   @cve_grab_isr      varchar(1)    =  ' ',
+		   @imp_cal_isr       numeric(16,2) =  0,
+		   @imp_isr           numeric(16,2) =  0,
+	       @imp_subsidio      numeric(16,2) =  0,
+		   @imp_grav_per      numeric(16,2) =  0,
+		   @imp_grav_acum     numeric(16,2) =  0, 
+		   @imp_isr_acum      numeric(16,2) =  0,
+		   @imp_sub_acum      numeric(16,2) =  0,
+		   @cve_tipo_tabla    varchar(2)    =  ' ',
+		   @cve_tipo_t_sub    varchar(2)    =  ' ',
+		   @cve_tipo_pago     varchar(1)    =  ' ',
+		   @dias_mes          int           =  0,
+		   @dias_ano          int           =  0,
+           @dias_periodo      int           =  0,
+           @periodos_mes      int           =  0
 
   DECLARE  @k_verdadero       bit           =  1,
 		   @k_falso           bit           =  0,
 		   @k_error           varchar(1)    =  'E',
 		   @k_cve_isr         varchar(4)    =  '0001',
-		   @k_cve_subsidio    varchar(4)    =  '0014'
+		   @k_cve_subsidio    varchar(4)    =  '0014',
+   		   @k_cve_sdo         varchar(4)    =  '0011',
+		   @k_no_aplica       varchar(1)    =  'N',
+		   @k_mes             varchar(1)    =  'M',
+		   @k_ano             varchar(1)    =  'A',
+		   @k_sueldo          varchar(1)    =  'S',
+		   @k_aguinaldo       varchar(1)    =  'A',
+		   @k_bono            varchar(1)    =  'B',
+		   @k_meses_ano       int           =  12
 
   BEGIN TRY
 
-  DELETE FROM NO_PRE_NOMINA  WHERE 
+  DELETE FROM NO_PRE_NOMINA     WHERE 
   ANO_PERIODO  =  @pAnoPeriodo  AND
   ID_CLIENTE   =  @pIdCliente   AND
   CVE_EMPRESA  =  @pCveEmpresa  AND
   ID_EMPLEADO  =  @pIdEmpleado  AND
   CVE_CONCEPTO IN (@k_cve_isr,@k_cve_subsidio)
 
-  SELECT @ano_mes= ANO_MES, @b_fin_mes = B_FIN_MES FROM NO_PERIODO WHERE
-         ID_CLIENTE      =  @pIdCliente      AND
-		 CVE_EMPRESA     =  @pCveEmpresa     AND
-		 CVE_TIPO_NOMINA =  @pCveTipoNomina  AND
-		 ANO_PERIODO     =  @pAnoPeriodo
+  EXEC spCalBaseGrav
+  @pIdProceso,
+  @pIdTarea,
+  @pCodigoUsuario,
+  @pIdClient,
+  @pCveEmpresa,
+  @pCveAplicacion,
+  @pCveTipoNomina,
+  @pAnoPeriodo,
+  @pIdEmpleado,
+  @pImp_base_grav,
+  @pError OUT,
+  @pMsgError OUT
 
-  SELECT   @tot_ing_grab = SUM(n.IMP_CONCEPTO)  
-  FROM     NO_PRE_NOMINA n, NO_CONCEPTO c  WHERE
-  n.ANO_PERIODO     = @pAnoPeriodo     AND
-  n.ID_CLIENTE      = @pIdCliente      AND
-  n.CVE_EMPRESA     = @pCveEmpresa     AND
-  n.CVE_TIPO_NOMINA = @pCveTipoNomina  AND
-  n.ID_EMPLEADO     = @pIdEmpleado     AND
-  n.ID_CLIENTE      = c.ID_CLIENTE     AND
-  n.CVE_EMPRESA     = c.CVE_EMPRESA    AND
-  n.CVE_CONCEPTO    = c.CVE_CONCEPTO   AND
-  c.B_GRABABLE      = @k_verdadero
-
-  SELECT   @imp_grab_mensual = SUM(i.IMP_PER_GRAB), @imp_isr_men = SUM(IMP_PER_ISR),
-           @imp_sub_men  =  SUM(IMP_PER_SUB)  
-  FROM     NO_INF_EMP_PER i, NO_ANO_MES a, NO_PERIODO p  WHERE
-  i.ANO_PERIODO     = @pAnoPeriodo      AND
-  i.ID_CLIENTE      = @pIdCliente       AND
-  i.CVE_EMPRESA     = @pCveEmpresa      AND
-  i.CVE_TIPO_NOMINA = @pCveTipoNomina   AND
-  i.ID_EMPLEADO     = @pIdEmpleado      AND
-  i.ID_CLIENTE      = p.ID_CLIENTE      AND
-  i.CVE_EMPRESA     = p.CVE_EMPRESA     AND
-  i.CVE_TIPO_NOMINA = p.CVE_TIPO_NOMINA AND
-  i.ANO_PERIODO     = p.ANO_PERIODO     AND
-  p.ID_CLIENTE      = a.ID_CLIENTE      AND
-  p.CVE_EMPRESA     = a.CVE_EMPRESA     AND
-  p.CVE_TIPO_NOMINA = a.CVE_TIPO_NOMINA AND
-  p.ANO_MES         = a.ANO_MES
-
-  SET @imp_grab_mensual = @imp_grab_mensual + @tot_ing_grab
-
-  UPDATE NO_INF_EMP_PER  SET IMP_PER_GRAB = @tot_ing_grab WHERE
-  ID_CLIENTE       =  @pIdCliente  AND
-  CVE_EMPRESA      =  @pCveEmpresa AND
-  CVE_TIPO_NOMINA  =  @pCveTipoNomina  AND
-  ANO_PERIODO      =  @pAnoPeriodo  AND
-  ID_EMPLEADO      =  @pIdEmpleado
-
-  SET  @tot_ing_grab  =  ISNULL(@tot_ing_grab,0) 
-  SELECT 'GRAB ' + CONVERT(VARCHAR(10),@tot_ing_grab)
-  EXEC spCalculaISR  
+  SELECT @cve_grab_isr = CVE_GRAB_ISR, @cve_tipo_tabla = CVE_TIPO_TABLA, @cve_tipo_t_sub = CVE_TIPO_TABLA_SUB,
+  @cve_tipo_pago  =  CVE_TIPO_PAGO 
+  FROM  NO_PERIODO  WHERE
+  ID_CLIENTE      = @pIdCliente       AND
+  CVE_EMPRESA     = @pCveEmpresa      AND
+  CVE_TIPO_NOMINA = @pCveTipoNomina   AND
+  ANO_PERIODO     = @pAnoPeriodo   
+ 
+  EXEC spAcumPeriodo
   @pIdProceso,
   @pIdTarea,
   @pCodigoUsuario,
@@ -125,15 +118,98 @@ BEGIN
   @pCveTipoNomina,
   @pAnoPeriodo,
   @pIdEmpleado,
-  @tot_ing_grab,
-  @imp_grab_mensual,
-  @imp_isr_men,
-  @imp_sub_men,
-  @imp_isr OUT,
-  @imp_subsidio OUT,
-  @b_fin_mes,
-  @pError OUT,
-  @pMsgError OUT
+  @pSueldoMensual,
+  @cve_grab_isr,
+  @cve_tipo_pago,
+  @imp_cal_isr  OUT,   -- importe que se llevará a la tabla de ISR para calculo de impuesto
+  @imp_grav_per OUT,   -- Importe de conceptos grabables del periodo
+  @imp_gav_acum OUT,   -- Importe grabado acumulado en el periodo, anual o mensual dependiendo de CVE_GRAB_ISR
+  @imp_isr_acum OUT,   -- Importe de ISR acumulado en el periodo, anual o mensual dependiendo de CVE_GRAB_ISR
+  @imp_sub_acum OUT,   -- Importe de Subsidio acumulado en el periodo, anual o mensual dependiendo de CVE_GRAB_ISR
+  @pError       OUT,
+  @pMsgError    OUT
+
+  SELECT  @dias_ano = DIAS_ANO  FROM NO_EMPRESA
+  WHERE   ID_CLIENTE  =  @pIdCliente  AND
+          CVE_EMPRESA =  @pCveEmpresa
+
+  SET @dias_mes      =  @dias_ano / @k_meses_ano
+  SET @dias_periodo  =  @dias_mes / 2
+  SET @periodos_mes  =  @dias_mes / @dias_periodo
+
+  IF  @cve_tipo_pago  =  @k_sueldo  AND  @cve_grab_isr NOT IN (@k_ano, @k_mes)
+  BEGIN
+    IF  @cve_grab_isr NOT IN (@k_ano, @k_mes)
+	BEGIN
+	  SET @imp_cal_isr   =  @imp_grav_per * @periodos_mes
+      EXEC spCalculaISR  
+      @pIdProceso,
+      @pIdTarea,
+      @pCodigoUsuario,
+      @pIdCliente,
+      @pCveEmpresa,
+      @pCveAplicacion,
+      @pCveTipoNomina,
+      @pAnoPeriodo,
+      @pIdEmpleado,
+      @imp_cal_isr,
+      @cve_tipo_tabla,
+      @imp_isr OUT,
+      @imp_subsidio OUT,
+      @pError OUT,
+      @pMsgError OUT
+
+      SET  @imp_isr      = @imp_isr / @periodos_mes
+	  SET  @imp_subsidio = @imp_isr / @periodos_mes
+
+    END
+    ELSE
+	BEGIN
+      SET @imp_cal_isr   =  @imp_grav_per * @imp_grav_acum
+	  EXEC spCalculaISR  
+      @pIdProceso,
+      @pIdTarea,
+      @pCodigoUsuario,
+      @pIdCliente,
+      @pCveEmpresa,
+      @pCveAplicacion,
+      @pCveTipoNomina,
+      @pAnoPeriodo,
+      @pIdEmpleado,
+      @imp_cal_isr,
+      @cve_tipo_tabla,
+      @imp_isr OUT,
+      @imp_subsidio OUT,
+      @pError OUT,
+      @pMsgError OUT
+
+	  SET  @imp_isr      = @imp_isr       -  @imp_isr_acum
+	  SET  @imp_subsidio = @imp_subsidio  -  @imp_sub_acum
+
+	END
+  END
+  ELSE
+  BEGIN
+    IF  @cve_tipo_pago  IN  (@k_bono, @k_aguinaldo)  
+    BEGIN
+      EXEC spCalculaISR  
+      @pIdProceso,
+      @pIdTarea,
+      @pCodigoUsuario,
+      @pIdCliente,
+      @pCveEmpresa,
+      @pCveAplicacion,
+      @pCveTipoNomina,
+      @pAnoPeriodo,
+      @pIdEmpleado,
+      @imp_cal_isr,
+      @cve_tipo_tabla,
+      @imp_isr OUT,
+      @imp_subsidio OUT,
+      @pError OUT,
+      @pMsgError OUT
+    END
+  END
 
   IF  @imp_isr <> 0
   BEGIN
@@ -186,6 +262,14 @@ BEGIN
     @pError OUT,
     @pMsgError OUT
   END
+
+  UPDATE  NO_INF_EMP_PER  SET IMP_BASE_GRAV  =  @imp_base_grav, IMP_ISR = @imp_isr, IMP_SUBSIDIO = @imp_subsidio   
+  WHERE   ANO_PERIODO     =  @pAnoPeriodo    AND
+          ID_CLIENTE      =  @pIdCliente     AND
+		  CVE_EMPRESA     =  @pCveEmpresa    AND
+		  CVE_TIPO_NOMINA =  @pCveTipoNomina AND
+		  ID_EMPLEADO     =  @pIdEmpleado
+
 
   END TRY
 

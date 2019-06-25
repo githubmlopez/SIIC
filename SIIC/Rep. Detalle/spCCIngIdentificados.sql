@@ -10,7 +10,7 @@ BEGIN
   DROP  PROCEDURE spCCIngIdentificados
 END
 GO
--- EXEC spCCIngIdentificados 'CU', '201811'
+-- EXEC spCCIngIdentificados 'CU', '201902'
 CREATE PROCEDURE [dbo].[spCCIngIdentificados] @pCveEmpresa varchar(6), @pAnoMes varchar(6)
 AS
 BEGIN

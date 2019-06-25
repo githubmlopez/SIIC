@@ -1,6 +1,6 @@
 USE [ADMON01]
 GO
---exec spTranFacturacion 'CU', 'MARIO', '201804', 12, 361, ' ', ' '
+--exec spTranFacturacion 'CU', 'MARIO', '201902', 4, 5, ' ', ' '
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -10,10 +10,10 @@ GO
 SET XACT_ABORT ON
 GO
 
-IF  EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[spTranFacturacion]') AND type in (N'FN', N'IF', N'TF', N'FS', N'FT'))
-DROP FUNCTION [dbo].[spTranFacturacion]
+IF  EXISTS( SELECT 1 FROM ADMON01.sys.procedures WHERE Name =  'spTranFacturacion')
+DROP PROCEDURE [dbo].[spTranFacturacion]
 GO
-ALTER PROCEDURE spTranFacturacion @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
+CREATE PROCEDURE spTranFacturacion @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                    @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								   @pMsgError varchar(400) OUT
 AS
@@ -28,6 +28,12 @@ BEGIN
   @cve_oper_cont       varchar(6),
   @tx_nota             varchar(250)
 
+  DECLARE
+  @imp_fact_ind     numeric(16,2)  =  0,
+  @imp_fact_ind_can numeric(16,2)  =  0,
+  @imp_iva_ind      numeric(16,2)  =  0,
+  @imp_iva_ind_can  numeric(16,2)  =  0,
+  @imp_neto_p_op    numeric(16,2)  =  0
 ---- Campos para importe en pesos 
 
   DECLARE
@@ -93,7 +99,12 @@ BEGIN
        	   @k_ind_fact_can    varchar(10)  =  'FACBING',
            @k_ind_iva         varchar(10)  =  'FACAIVA',
 		   @k_ind_iva_can     varchar(10)  =  'FACBIVA',
-  
+		   @k_cta_utilidad    varchar(10)  =  'CTAGANCAM',
+           @k_cta_perdida     varchar(10)  =  'CTAPERCAM',
+		   @k_util_canc       varchar(6)   =  'FCGA',
+		   @k_perd_canc       varchar(6)   =  'FCPE',
+		   @k_util_camb       varchar(10)   = 'UTILC',
+		   @k_can_util_camb   varchar(10)   = 'CANUTIL',
 -- Constantes para folios
 		   @k_cta_iva         varchar(10),
 		   @k_cta_ingreso     varchar(10),
@@ -133,6 +144,7 @@ BEGIN
   SET      @k_error          =  'E'
   SET      @k_ing_factura    =  'INGFAC' 
   SET      @k_fac_cancel     =  'FACCAN'
+
   
   BEGIN TRY
 
@@ -155,7 +167,7 @@ BEGIN
    @gpo_transaccion)
 -- Obten datos del periodo contable
   
-  select @f_inicio_mes  =  F_INICIAL,  @f_fin_mes  =  F_FINAL,  @tipo_cam_f_mes =  TIPO_CAM_F_MES
+  SELECT @f_inicio_mes  =  F_INICIAL,  @f_fin_mes  =  F_FINAL,  @tipo_cam_f_mes =  TIPO_CAM_F_MES
   from CI_PERIODO_CONTA  where ANO_MES  =  @pAnoMes
   
   --SELECT ' PROCESANDO AÑOMES ==> ' + @pAnoMes
@@ -200,24 +212,32 @@ BEGIN
   END,
 --04 'IMCP', Importe Complementario Pesos
   CASE
-  WHEN    f.CVE_F_MONEDA  =  @k_dolar
+  WHEN    f.CVE_F_MONEDA  =  @k_dolar  AND  f.SIT_TRANSACCION  =  @k_activa
   THEN   (f.IMP_F_NETO *
   dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)) - 
   f.IMP_F_NETO
+  WHEN    f.CVE_F_MONEDA  =  @k_dolar  AND  f.SIT_TRANSACCION  =  @k_cancelada
+  THEN   (f.IMP_F_NETO * dbo.fnObtTipoCamCan(@pCveEmpresa, @pAnoMes) - f.IMP_F_NETO)
   ELSE    0
   END,
---05 'IMBD', Importe Bruto Dólares
+--05 'IMBD', Importe Bruto Dólares	
   CASE
-  WHEN    f.CVE_F_MONEDA  =  @k_dolar
+  WHEN    f.CVE_F_MONEDA  =  @k_dolar AND  f.SIT_TRANSACCION  =  @k_activa 
   THEN    IMP_F_BRUTO  *
-  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)	
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+  WHEN    f.CVE_F_MONEDA  =  @k_dolar AND  f.SIT_TRANSACCION  =  @k_cancelada
+  THEN    IMP_F_BRUTO  *
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
   ELSE    0
   END,
 --06 'IMID', Importe IVA Dólares
   CASE
-  WHEN    f.CVE_F_MONEDA  =  @k_dolar
+  WHEN    f.CVE_F_MONEDA  =  @k_dolar  AND  f.SIT_TRANSACCION  =  @k_activa 
   THEN    IMP_F_IVA * 
-  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)	
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+  WHEN    f.CVE_F_MONEDA  =  @k_dolar  AND  f.SIT_TRANSACCION  =  @k_cancelada 
+  THEN    IMP_F_IVA * 
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
   ELSE    0
   END,
 --07 'IMND', Importe Neto Dólares
@@ -241,7 +261,27 @@ BEGIN
 --14 'PROY', Proyecto
   ' ',
 --15 'CPTO', Concepto
-  f.SERIE + CONVERT(VARCHAR(10), f.ID_CXC) + c.NOM_CLIENTE + CONVERT(VARCHAR(10), dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION)),
+  CASE
+  WHEN    f.CVE_F_MONEDA  =  @k_dolar AND  f.SIT_TRANSACCION  =  @k_activa 
+  THEN    
+  f.SERIE +
+  CONVERT(VARCHAR(10), f.ID_CXC) + ' ' +
+  ISNULL(c.NOM_CLIENTE,0) + ' ' +
+  f.SIT_TRANSACCION + ' ' +
+  ISNULL(CONVERT(VARCHAR(10), dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION)),0) + ' '
+  WHEN    f.CVE_F_MONEDA  =  @k_dolar AND  f.SIT_TRANSACCION  =  @k_cancelada
+  THEN    
+  f.SERIE +
+  CONVERT(VARCHAR(10), f.ID_CXC) + ' ' +
+  ISNULL(c.NOM_CLIENTE,0)  + ' ' + 
+  f.SIT_TRANSACCION + ' ' +
+  ISNULL(CONVERT(VARCHAR(10), dbo.fnObtTipoCamb(f.F_OPERACION)),0)
+  ELSE  
+  f.SERIE +
+  CONVERT(VARCHAR(10), f.ID_CXC) + ' ' +
+  ISNULL(c.NOM_CLIENTE,' ')  + ' ' + 
+  f.SIT_TRANSACCION + ' ' 
+  END,
 -- Campos de trabajo
   f.SIT_TRANSACCION,
   f.F_OPERACION,
@@ -253,13 +293,75 @@ BEGIN
           f.ID_VENTA   =  v.ID_VENTA       AND
           v.ID_CLIENTE =  c.ID_CLIENTE     AND
           f.SERIE      <>  @k_legada       AND                                         
-
         ((f.SIT_TRANSACCION      =  @k_activa                                   AND  
           f.F_OPERACION >= @f_inicio_mes and f.F_OPERACION <= @f_fin_mes)    OR
 
 		 (f.SIT_TRANSACCION      =  @k_cancelada   AND
 		  dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION))  = @pAnoMes))               
   -----
+  UNION
+  SELECT
+-- dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)	
+--01 'IMBP', Importe Bruto Pesos
+  0,
+--02 'IMIP', Importe IVA Pesos
+  0,
+--03 'IMNP', Importe Neto Pesos
+ (f.IMP_F_NETO * dbo.fnObtTipoCamCan(@pCveEmpresa, @pAnoMes) -  f.IMP_F_NETO) -
+ (f.IMP_F_NETO *
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION) -  f.IMP_F_NETO),
+--04 'IMCP', Importe Complementario Pesos
+  0,
+--05 'IMBD', Importe Bruto Dólares
+  0,
+--06 'IMID', Importe IVA Dólares
+  0,
+--07 'IMND', Importe Neto Dólares
+  0,
+--08 'CTCO', Cuenta Contable
+  CASE
+  WHEN
+ (f.IMP_F_NETO * dbo.fnObtTipoCamCan(@pCveEmpresa, @pAnoMes) -  f.IMP_F_NETO) -
+ (f.IMP_F_NETO *
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION) -  f.IMP_F_NETO) > 0
+  THEN  dbo.fnObtParAlfa(@k_cta_utilidad)
+  ELSE
+  dbo.fnObtParAlfa(@k_cta_perdida)
+  END,
+--09 'CTCM', Cuenta Contable Complementaria
+  ' ',
+--10 'CTIN', Cuenta Contable Ingresos
+  ' ',
+--11 'CTIV', Cuenta Contable IVA
+  ' ',
+--12 'TCAM', Tipo de Cambio
+  1,
+--13 'DPTO', Departamento
+  0,
+--14 'PROY', Proyecto
+  ' ',
+--15 'CPTO', Concepto
+  f.SERIE +
+  CONVERT(VARCHAR(10), f.ID_CXC) + ' ' +
+  ISNULL(c.NOM_CLIENTE,' ') + ' ' +
+  f.SIT_TRANSACCION + ' ',
+-- Campos de trabajo
+  f.SIT_TRANSACCION,
+  f.F_OPERACION,
+  f.CVE_F_MONEDA,
+  c.NOM_CLIENTE,
+  SERIE + '-' + CONVERT(VARCHAR(8),f.ID_CXC) + '-' + c.NOM_CLIENTE + '-' + CONVERT(VARCHAR(8),dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes, f.F_OPERACION))
+  FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
+  WHERE   f.CVE_EMPRESA          =  @pCveEmpresa   AND
+          f.ID_VENTA             =  v.ID_VENTA     AND
+          v.ID_CLIENTE           =  c.ID_CLIENTE   AND
+          f.SERIE               <>  @k_legada      AND
+		  f.CVE_F_MONEDA         = @k_dolar        AND                                        
+		 (f.SIT_TRANSACCION      =  @k_cancelada   AND
+		  dbo.fnArmaAnoMes (YEAR(f.F_CANCELACION), MONTH(f.F_CANCELACION))  = @pAnoMes  AND
+		  dbo.fnArmaAnoMes (YEAR(f.F_OPERACION)  , MONTH(f.F_OPERACION))    < @pAnoMes)
+		  
+-------
 
   EXEC spActPctTarea @pIdTarea, 30
   
@@ -299,15 +401,21 @@ BEGIN
 
   WHILE (@@fetch_status = 0 )
   BEGIN 
---  SELECT 'DB ** ENTRE A WHILE ** '
+--    SELECT 'DB ** ENTRE A WHILE ** '
+    IF  @cta_contable  NOT IN (dbo.fnObtParAlfa(@k_cta_utilidad), dbo.fnObtParAlfa(@k_cta_perdida))
+    BEGIN
+
     IF   @sit_factura  =  @k_cancelada
 	BEGIN
+      SET  @imp_fact_ind_can  =  @imp_fact_ind_can  +    @imp_bruto_p + @imp_bruto_d
+      SET  @imp_iva_ind_can   =  @imp_iva_ind_can   +    @imp_iva_p + @imp_iva_d
+
 	  IF  dbo.fnArmaAnoMes (YEAR(@f_operacion), MONTH(@f_operacion))  < @pAnoMes
       BEGIN
         SET  @conc_movimiento  =  LTRIM(@conc_movimiento + '-CANCEL.ANT** ')
 		IF   @cve_f_moneda  =  @k_peso
         BEGIN
-          SET  @cve_oper_cont    =  @k_can_ma_pesos
+		  SET  @cve_oper_cont    =  @k_can_ma_pesos
  --         SET  @imp_fact_canc    =  @imp_fact_canc    +  @imp_bruto_p
         END
         ELSE
@@ -318,7 +426,10 @@ BEGIN
       END
 	  ELSE
 	  BEGIN
-        IF  @cve_f_moneda  =  @k_peso
+        SET  @imp_fact_ind  =  @imp_fact_ind  +    @imp_bruto_p + @imp_bruto_d
+        SET  @imp_iva_ind   =  @imp_iva_ind   +    @imp_iva_p   + @imp_iva_d
+        SET  @conc_movimiento  =  LTRIM(@conc_movimiento + '-(F) O (C) MES ** ')      
+	    IF   @cve_f_moneda  =  @k_peso
         BEGIN
          SET  @cve_oper_cont    =  @k_can_mm_pesos  
 --         SET  @imp_fact_canc    =  @imp_fact_canc  +  @imp_bruto_p
@@ -334,6 +445,9 @@ BEGIN
 	END
     ELSE
     BEGIN
+      SET  @imp_fact_ind  =  @imp_fact_ind  +    @imp_bruto_p + @imp_bruto_d
+      SET  @imp_iva_ind   =  @imp_iva_ind   +    @imp_iva_p   + @imp_iva_d
+
       IF  @cve_f_moneda    =  @k_dolar 
       BEGIN
 	    SET  @cve_oper_cont  =  @k_fac_dolar
@@ -345,6 +459,24 @@ BEGIN
 --		SET  @imp_facturado  =  @imp_facturado  +  @imp_bruto_p
       END
     END
+
+	END
+    ELSE
+	BEGIN
+	  IF  @imp_neto_p  >  0
+	  BEGIN
+        SET  @imp_neto_p_op  =  @imp_neto_p *  -1 
+--      SELECT ' VOY A ACTUALIZAR ' + CONVERT(VARCHAR(10), @imp_neto_p_op ) 
+        UPDATE CI_PERIODO_ISR SET IMP_CANC_UTILIDAD = 0 WHERE ANO_MES = @pAnoMes
+	    EXEC spInsIsrItem @pCveEmpresa, @pAnoMes,  @k_can_util_camb,  @imp_neto_p
+		SET  @cve_oper_cont  =  @k_util_canc
+	  END
+	  ELSE
+	  BEGIN
+	    SET  @cve_oper_cont  =  @k_perd_canc
+	  END
+	  SET  @imp_neto_p  =    ABS(@imp_neto_p) * -1
+	END
 
 --	select 'DB Voy a crear transaccion '
    
@@ -424,15 +556,24 @@ BEGIN
   DEALLOCATE cur_transaccion
 
 -- Actualiza Información para cálculo de indicadores
-  
---  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_factura, @k_no_act, @imp_facturado
---  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_fact_can, @k_no_act, @imp_fact_canc 
+  IF  @cta_contable  NOT IN (@k_cta_utilidad, @k_cta_perdida)
+  BEGIN
 
-  EXEC  spActRegProc  @pCveEmpresa, @pIdProceso, @pIdTarea, @gpo_transaccion
+    EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_factura,  @imp_fact_ind, @k_no_act 
+    EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_fact_can, @imp_fact_ind_can, @k_no_act 
+    EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_iva,  @imp_iva_ind, @k_no_act 
+    EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_iva_can, @imp_iva_ind_can, @k_no_act 
 
-  EXEC spActPctTarea @pIdTarea, 90
+    EXEC spInsIsrItem @pCveEmpresa, @pAnoMes,  @k_ing_factura, @imp_fact_ind
+    EXEC spInsIsrItem @pCveEmpresa, @pAnoMes,  @k_fac_cancel, @imp_fact_ind_can
+
+    EXEC  spActRegProc  @pCveEmpresa, @pIdProceso, @pIdTarea, @gpo_transaccion
+
+    EXEC spActPctTarea @pIdTarea, 90
 
 --  SELECT ' ** REGISTRO DE IMPUESTOS **'
+
+  END
 
   END TRY
 

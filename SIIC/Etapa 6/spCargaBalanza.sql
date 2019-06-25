@@ -10,7 +10,7 @@ GO
 SET NOCOUNT ON
 GO
 
--- exec spCargaBalaza 'CU', 'MARIO', '201812', 1, 144, ' ', ' '
+-- exec spCargaBalaza 'CU', 'MARIO', '201902', 1, 1, ' ', ' '
 
 ALTER PROCEDURE [dbo].[spCargaBalaza] @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                            @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,

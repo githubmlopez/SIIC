@@ -113,7 +113,7 @@ BEGIN
   BEGIN
     SET  @error    =  'Periodo no existe o cerrado'
     SET  @msg_error =  LTRIM(@error + '==> ' + isnull(ERROR_MESSAGE(), ' '))
-    SELECT '1' + @msg_error
+--    SELECT '1' + @msg_error
     EXECUTE spCreaTareaEvento 
     @pIdProceso,
     @id_tarea,

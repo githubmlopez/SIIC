@@ -17,7 +17,7 @@ GO
 --GO
 
 --DELETE FROM DICCIONARIO.dbo.FC_TABLA_EX
---EXEC spCreaDiccionario ADNOMINA01
+--EXEC spCreaDiccionario ADMON01
 ALTER PROCEDURE  [dbo].[spCreaDiccionario]  
 @pBaseDatos varchar(15)
 AS
@@ -32,8 +32,8 @@ BEGIN
 -- INSERTA INFORMACION DE TABLAS
 
   INSERT INTO DICCIONARIO.dbo.FC_TABLA
-  SELECT @pBaseDatos, TABLE_NAME FROM ADNOMINA01.INFORMATION_SCHEMA.TABLES 
-  WHERE TABLE_NAME <> 'sysdiagrams'
+  SELECT @pBaseDatos, TABLE_NAME, ' ' FROM ADMON01.INFORMATION_SCHEMA.TABLES 
+--  WHERE TABLE_NAME <> 'sysdiagrams'
 
 -- INSERTA INFORMACION DE COLUMNAS EN LAS TABLAS
 
@@ -53,7 +53,7 @@ BEGIN
   ELSE  0
   END,
   0 
-  FROM ADNOMINA01.INFORMATION_SCHEMA.COLUMNS c
+  FROM ADMON01.INFORMATION_SCHEMA.COLUMNS c
 
 -- Inserta Constrains llaves unicas, llaves primarias, llaves foraneas e Indices
 
@@ -61,8 +61,8 @@ BEGIN
   SELECT DISTINCT
   @pBaseDatos, s2.name as TABLA, s3.name AS CONTR, so.name REFERENCIA, @k_llave_foranea as TIPO_LLAVE,
   ' ', ' '
-  FROM ADNOMINA01.sys.foreign_key_columns as fk,
-  ADNOMINA01.sys.objects so, ADNOMINA01.sys.objects s2, ADNOMINA01.sys.objects s3   
+  FROM ADMON01.sys.foreign_key_columns as fk,
+  ADMON01.sys.objects so, ADMON01.sys.objects s2, ADMON01.sys.objects s3   
   WHERE  fk.referenced_object_id  =  so.object_id  and
        fk.parent_object_id      =  s2.object_id  and
        fk.constraint_object_id  =  s3.object_id 
@@ -75,15 +75,15 @@ BEGIN
   THEN @k_indice 
   ELSE @k_llave_primaria 
   END as TIPO_LLAVE, ' ',' '
-  FROM ADNOMINA01.sys.key_constraints as fk,
-  ADNOMINA01.sys.objects so
-  WHERE  fk.parent_object_id      =  so.object_id
+  FROM ADMON01.sys.key_constraints as fk,
+  ADMON01.sys.objects so
+  WHERE  fk.parent_object_id      =  so.object_id  
 
 -- Inserta Campos de Constrains llaves unicas, llaves primarias, e Indices
 
   INSERT INTO DICCIONARIO.dbo.FC_CONSTR_CAMPO
   SELECT @pBaseDatos, c.NOM_TABLA, c.NOM_CONSTRAINT, kc.COLUMN_NAME, ' '
-  FROM ADNOMINA01.INFORMATION_SCHEMA.KEY_COLUMN_USAGE kc, DICCIONARIO.dbo.FC_CONSTRAINT c
+  FROM ADMON01.INFORMATION_SCHEMA.KEY_COLUMN_USAGE kc, DICCIONARIO.dbo.FC_CONSTRAINT c
   WHERE 
   kc.CONSTRAINT_NAME = c.NOM_CONSTRAINT and c.TIPO_LLAVE IN (@k_llave_primaria, @k_llave_unica,@k_indice) ORDER BY 
   CONSTRAINT_NAME, TABLE_NAME, ORDINAL_POSITION
@@ -92,8 +92,8 @@ BEGIN
 
   INSERT INTO DICCIONARIO.dbo.FC_CONSTR_CAMPO
   SELECT @pBaseDatos, s2.name as TABLA, s3.name AS CONTR, ci.COLUMN_NAME, ci2.COLUMN_NAME 
-  FROM ADNOMINA01.sys.foreign_key_columns as fk,
-  ADNOMINA01.sys.objects so, ADNOMINA01.sys.objects s2, ADNOMINA01.sys.objects s3, ADNOMINA01.INFORMATION_SCHEMA.COLUMNS ci, ADNOMINA01.INFORMATION_SCHEMA.COLUMNS ci2  
+  FROM ADMON01.sys.foreign_key_columns as fk,
+  ADMON01.sys.objects so, ADMON01.sys.objects s2, ADMON01.sys.objects s3, ADMON01.INFORMATION_SCHEMA.COLUMNS ci, ADMON01.INFORMATION_SCHEMA.COLUMNS ci2  
   WHERE  fk.referenced_object_id  =  so.object_id  and
          fk.parent_object_id      =  s2.object_id  and
          fk.constraint_object_id  =  s3.object_id  and
@@ -125,7 +125,7 @@ BEGIN
 -- Indica campos identity de la tabla
 
   UPDATE FC_TABLA_COLUMNA SET B_IDENTITY = 1 WHERE EXISTS 
-  (SELECT 1 FROM ADNOMINA01.sys.objects o, ADNOMINA01.sys.identity_columns i
+  (SELECT 1 FROM ADMON01.sys.objects o, ADMON01.sys.identity_columns i
   WHERE i.object_id  =  o.object_id  AND
         o.name  =  FC_TABLA_COLUMNA.NOM_TABLA  AND
 	    i.name  =  FC_TABLA_COLUMNA.NOM_CAMPO)

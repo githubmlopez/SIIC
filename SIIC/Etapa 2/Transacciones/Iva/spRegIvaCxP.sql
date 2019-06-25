@@ -76,13 +76,13 @@ BEGIN
 
   SET @NunRegistros = @@ROWCOUNT
 ------------------------------------------------------------------------------------------------------
-
+--  SELECT * FROM @TCxCConcil
   SET @RowCount     = 1
   WHILE @RowCount <= @NunRegistros
   BEGIN
     SELECT @id_cxp = ID_CXP, @f_captura = F_CAPTURA,  @cve_moneda = CVE_MONEDA, @imp_iva = IMP_IVA, @imp_bruto = IMP_BRUTO,
 	       @tx_nota = TX_NOTA,
-	       @tx_nota_e = TX_NOTA_E,  @rfc = RFC, @id_proveedor  =  ID_PROVEEDOR, @b_fac_cp = B_FAC_CP, @b_fac_item = B_FAC_CP
+	       @tx_nota_e = TX_NOTA_E,  @rfc = RFC, @id_proveedor  =  ID_PROVEEDOR, @b_fac_cp = B_FAC_CP, @b_fac_item = B_FAC_ITEM
 	FROM @TCxCConcil  WHERE  RowID = @RowCount
 
 	IF  @cve_moneda  =  @k_dolar

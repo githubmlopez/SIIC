@@ -165,7 +165,10 @@ BEGIN
 	    IF  @b_correcto  =  @k_falso	     
 	    BEGIN
 	      SET  @num_reg_proc  =  @num_reg_proc  +  1
-		  SET  @pError    =  'No Existe Concepto ' + CONVERT(varchar(14),@id_transaccion) + ' ' +  SUBSTRING(@operacion,7,10) 
+		  SET  @pError    =  'No Existe Concepto ' + 
+		  ISNULL(CONVERT(varchar(14),@id_transaccion), 'NULO') + 
+		  ' ' +
+		  ISNULL(SUBSTRING(@operacion,7,10), 'NULO')
           SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
           EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
         END
@@ -196,7 +199,10 @@ BEGIN
 	               CTA_CONTABLE =   @cta_contable)
     BEGIN
       SET  @num_reg_proc  =  @num_reg_proc  +  1
-	  SET  @pError    =  'No Existe Cuenta TRAN ' + @cta_contable + ' ' +  @cve_conc_trans
+	  SET  @pError    =  'No Existe Cuenta TRAN ' + 
+	  ISNULL(@cta_contable, 'NULO') +
+	  ' ' +
+	  ISNULL(@cve_conc_trans,'NULO')
       SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(),' '))
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
 
@@ -226,7 +232,10 @@ BEGIN
 	    @imp_concepto  =  0
 	BEGIN
 	  SET  @num_reg_proc  =  @num_reg_proc  +  1
-	  SET  @pError    =  'Concepto en ceros ' + convert(varchar(16), @id_transaccion) + ' ' +  @cve_conc_trans 
+	  SET  @pError    =  'Concepto en ceros ' +
+	  ISNULL(CONVERT(varchar(16), @id_transaccion), 'NULO') +
+	  ' ' +
+	  ISNULL(@cve_conc_trans,'NULO') 
       SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(),' '))
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
 	END
@@ -252,8 +261,10 @@ BEGIN
 	FROM @TRegNoAcred 
     WHERE  RowID = @RowCount
     SET  @num_reg_proc  =  @num_reg_proc  +  1
-    SET  @pError    =  'Reg IVA no Acreditado ' + @ano_mes_acred + ' ' +
-	                   CONVERT(varchar(9), @id_movto_bancario)
+    SET  @pError    =  'Reg IVA no Acreditado ' +
+	ISNULL(@ano_mes_acred,'NULO') +
+	' ' +
+	ISNULL(CONVERT(varchar(9), @id_movto_bancario),'NULO')
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(),' '))
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
 

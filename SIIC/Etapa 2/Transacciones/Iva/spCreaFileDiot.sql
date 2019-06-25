@@ -6,7 +6,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT  ON 
 GO
--- exec spCreaFileDiot'CU', 'MLOPEZ', '201901', 1, 2, ' ', ' '
+-- exec spCreaFileDiot'CU', 'MLOPEZ', '201902', 1, 2, ' ', ' '
 ALTER PROCEDURE [dbo].[spCreaFileDiot]  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6) -- , 
 --                                         @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 --								           @pMsgError varchar(400) OUT
@@ -39,18 +39,20 @@ BEGIN
 -----------------------------------------------------------------------------------------------------
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
 -----------------------------------------------------------------------------------------------------
+
   INSERT @TDiot  (RFC, IMP_TOT_IVA, IMP_TOT_BRUTO, CVE_TIPO_OPERACION)  
-  SELECT RFC, ABS(SUM(ROUND(IMP_IVA,0,1))), ABS(SUM(ROUND(IMP_BRUTO,0,1))), ' ' FROM CI_PERIODO_IVA 
+  SELECT RFC, ABS(SUM(ROUND(IMP_IVA,0))), ABS(SUM(ROUND(IMP_BRUTO,0))), ' ' FROM CI_PERIODO_IVA 
   WHERE  ANO_MES_ACRED = @pAnoMes    AND
          IMP_IVA       > 0           AND
 		 B_ACREDITADO  = @k_verdadero
   GROUP BY RFC
   SET @NunRegistros = @@ROWCOUNT
 -----------------------------------------------------------------------------------------------------
+--  select * from @TDiot
   SET @RowCount     = 1
   WHILE @RowCount <= @NunRegistros
   BEGIN
-    SELECT @rfc = RFC, @imp_tot_bruto =  ROUND(IMP_TOT_BRUTO,0,1), @imp_tot_iva = ROUND(IMP_TOT_IVA,0,1), @cve_tipo_oper = CVE_TIPO_OPERACION
+    SELECT @rfc = RFC, @imp_tot_bruto =  IMP_TOT_BRUTO, @imp_tot_iva = IMP_TOT_IVA, @cve_tipo_oper = CVE_TIPO_OPERACION
 	FROM @TDiot
 	WHERE  RowID  =  @RowCount
 

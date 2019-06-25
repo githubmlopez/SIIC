@@ -43,7 +43,7 @@ BEGIN
   BEGIN
     IF  @pImpPivote  <>  @k_no_act
 	BEGIN
-      UPDATE CI_INDICA_PERIODO SET  IMP_PIVOTE  =  @pImpPivote
+	  UPDATE CI_INDICA_PERIODO SET  IMP_PIVOTE  =  @pImpPivote
       WHERE  CVE_EMPRESA    =  @pCveEmpresa  AND
 	         ANO_MES        =  @pAnoMes  AND
 	         CVE_INDICADOR  =  @pCveIndicador

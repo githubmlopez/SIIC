@@ -6,7 +6,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT  ON 
 GO
--- exec spAvisosInform 'CU', 'MLOPEZ', '201901', 1, 144, ' ', ' '
+-- exec spAvisosInform 'CU', 'MLOPEZ', '201903', 1, 144, ' ', ' '
 ALTER PROCEDURE [dbo].[spAvisosInform]  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                          @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								         @pMsgError varchar(400) OUT
@@ -27,7 +27,8 @@ BEGIN
 		   @f_operacion       date,
 		   @tipo_cambio       numeric(8,4),
 		   @cve_operacion     varchar(4),
-		   @cve_operacion_p   varchar(4)
+		   @cve_operacion_p   varchar(4),
+		   @id_cliente        int
 
   DECLARE  @id_movto_bancario int,
            @ano_mes           varchar(6),
@@ -76,6 +77,7 @@ BEGIN
 		   @k_Nfact_Npag    varchar(1)  = '4',
 		   @k_traspaso      varchar(4)  = 'TBC',
 		   @k_dolar         varchar(1)  = 'D',
+		   @k_peso          varchar(1)  = 'P',
 		   @k_no_conciliado varchar(1)  = 'N',
 		   @k_conciliado    varchar(1)  = 'C',
 		   @k_abono         varchar(1)  = 'A',
@@ -87,7 +89,9 @@ BEGIN
 		   @k_cero_uno      int         =  1,
 		   @k_primero       int         =  1,
 		   @k_factura       int         =  30,
-		   @k_cxp           int         =  20
+		   @k_cxp           int         =  20,
+		   @k_legacy        int         =  1000,
+		   @k_emp_cerouno   varchar(4)  =  'CU'
 
   SET  @ano  =  CONVERT(INT,SUBSTRING(@pAnoMes,1,4))
   SET  @mes  =  CONVERT(INT,SUBSTRING(@pAnoMes,5,2))
@@ -395,9 +399,9 @@ BEGIN
 		   SIT_MOVTO         varchar(1),
 		   B_CONCILIA        bit)
 
-  INSERT  @TMovBancario(ID_MOVTO_BANCARIO, ANO_MES, F_OPERACION, CVE_CHEQUERA, CVE_TIPO_MOVTO,
+  INSERT  @TMovBancario(ID_MOVTO_BANCARIO, ANO_MES, F_OPERACION, CVE_CHEQUERA, CVE_MONEDA, CVE_TIPO_MOVTO,
                         CVE_CARGO_ABONO, SIT_MOVTO, B_CONCILIA) 
-  SELECT  m.ID_MOVTO_BANCARIO, m.ANO_MES, m.F_OPERACION, ch.CVE_CHEQUERA, m.CVE_TIPO_MOVTO,
+  SELECT  m.ID_MOVTO_BANCARIO, m.ANO_MES, m.F_OPERACION, ch.CVE_CHEQUERA, ch.CVE_MONEDA, m.CVE_TIPO_MOVTO,
           m.CVE_CARGO_ABONO, SUBSTRING(m.SIT_CONCILIA_BANCO,1,1),
           t.B_CONCILIA
           FROM  CI_MOVTO_BANCARIO m, CI_CHEQUERA ch, CI_TIPO_MOVIMIENTO t WHERE
@@ -847,6 +851,47 @@ BEGIN
     EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
   END
 END
+
+-------------------------------------------------------------------------------
+-- Verificación de Cuentas contables de clientes
+-------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------
+-- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
+-----------------------------------------------------------------------------------------------------
+  DECLARE  @TCliente       TABLE
+          (RowID           int  identity(1,1),
+		   ID_CLIENTE      int)
+
+  INSERT  @TCliente(ID_CLIENTE) 
+  SELECT  c.ID_CLIENTE
+  FROM    CI_CLIENTE c
+  WHERE   ID_CLIENTE <> @k_legacy
+  SET @NunRegistros = @@ROWCOUNT
+------------------------------------------------------------------------------------------------------
+  SET @RowCount     = 1
+
+  WHILE @RowCount <= @NunRegistros
+  BEGIN
+    SELECT @id_cliente = ID_CLIENTE
+	FROM   @TCliente  WHERE  RowID = @RowCount
+
+    IF NOT EXISTS (
+    SELECT 1 FROM CI_CTA_CONT_CTE WHERE
+    CVE_EMPRESA = @k_emp_cerouno AND ID_CLIENTE = @id_cliente AND
+    CVE_TIPO_CTA= @k_peso)  AND
+    NOT EXISTS
+   (SELECT 1 FROM CI_CTA_CONT_CTE WHERE
+    CVE_EMPRESA = @k_emp_cerouno AND ID_CLIENTE = @id_cliente AND
+    CVE_TIPO_CTA= @k_dolar)
+    BEGIN
+      SET @num_reg_proc = @num_reg_proc + 1  
+	  SET  @pError    =  'Cliente sin cuenta Contable o invalida ' + CONVERT(VARCHAR(10),@id_cliente)   
+      SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_warning, @pError, @pMsgError
+    END
+
+    SET @RowCount     = @RowCount + 1
+  END
 
 
   

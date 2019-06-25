@@ -125,7 +125,7 @@ BEGIN
 	IF  NOT EXISTS(SELECT 1 FROM CI_CAT_CTA_CONT  WHERE  CTA_CONTABLE  =  @cta_cont1)
 	BEGIN
       SET  @num_reg_proc  =  @num_reg_proc + 1
-	  SET  @pError    =  'No Existe Cuenta ' +  @cta_cont1 + ' ' + @origen
+	  SET  @pError    =  'No Existe Cuenta ' +  ISNULL(@cta_cont1, 'CTA NULL' + ' ' + ISNULL(@origen, 'Orig NULL'
  	  SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
       EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
  	END

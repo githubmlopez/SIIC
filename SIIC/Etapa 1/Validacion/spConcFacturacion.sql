@@ -21,22 +21,9 @@ BEGIN
 		  @k_cancelada      varchar(1)   = 'C',
           @k_falso          bit          = 0,
 		  @k_dolar          varchar(1)   = 'D',
-		  @k_no_act         numeric(9,0) = 99999,
-          @k_ind_factura    varchar(10)  = 'FACAING',
-		  @k_ind_fact_can   varchar(10)  = 'FACBING',
-          @k_ind_iva        varchar(10)  = 'FACAIVA',
-		  @k_ind_iva_can    varchar(10)  = 'FACBIVA'
+		  @k_no_act         numeric(9,0) = 99999
 
-
--- Claves de operaciòn para registro de campos para càlculo de ISR
-  DECLARE @k_ing_factura     varchar(6)  =  'INGFAC',
-          @k_fac_cancel      varchar(6)  =  'FACCAN'
-
-  DECLARE @imp_fact_ind     numeric(16,2),
-          @imp_fact_ind_can numeric(16,2),
-		  @imp_iva_ind      numeric(16,2),
-          @imp_iva_ind_can  numeric(16,2),
-		  @num_reg_proc     int = 0 
+  DECLARE @num_reg_proc     int = 0 
 
   DECLARE @f_inicio_mes  date,
           @f_fin_mes     date
@@ -55,30 +42,30 @@ BEGIN
   FROM CI_PERIODO_CONTA  where ANO_MES  =  @pAnoMes
   
   MERGE CI_COM_FISC_CONTPAQ AS TARGET
-       USING (SELECT f.CVE_EMPRESA, f.SERIE, f.ID_CXC, c.ID_CLIENTE, c.NOM_CLIENTE, f.F_OPERACION,
+       USING (SELECT f.CVE_EMPRESA, f.SERIE, f.ID_CXC, c.ID_CLIENTE, c.NOM_CLIENTE, f.F_OPERACION, 
               f.SIT_TRANSACCION,
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
 			  THEN 
-			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+			  f.TIPO_CAMBIO
 			  ELSE 0
 			  END AS TIPO_CAMBIO,
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
 			  THEN f.IMP_F_BRUTO *
-			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+			  f.TIPO_CAMBIO
 			  ELSE f.IMP_F_BRUTO
 			  END AS IMP_F_BRUTO,
 			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
 			  THEN f.IMP_F_IVA *
-			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+			  f.TIPO_CAMBIO
 			  ELSE f.IMP_F_IVA
 			  END AS IMP_F_IVA,
  			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
 			  THEN f.IMP_F_NETO * 
-			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+			  f.TIPO_CAMBIO
 			  ELSE f.IMP_F_NETO
 			  END AS IMP_F_NETO
 	          FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
@@ -95,26 +82,25 @@ BEGIN
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
 			  THEN 
-			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+			  f.TIPO_CAMBIO
 			  ELSE 0
 			  END AS TIPO_CAMBIO,
-
 	          CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
 			  THEN f.IMP_F_BRUTO * 
-              dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+              f.TIPO_CAMBIO
 			  ELSE f.IMP_F_BRUTO
 			  END AS IMP_F_BRUTO,
 			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
 			  THEN f.IMP_F_IVA *
-			  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+			  f.TIPO_CAMBIO
 			  ELSE f.IMP_F_IVA
 			  END AS IMP_F_IVA,
  			  CASE
 			  WHEN f.CVE_F_MONEDA  =  @k_dolar
 			  THEN f.IMP_F_NETO *
-              dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+              f.TIPO_CAMBIO
 			  ELSE f.IMP_F_NETO
 			  END AS IMP_F_NETO
 	          FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
@@ -194,43 +180,9 @@ BEGIN
   BEGIN
     SET  @num_reg_proc = @num_reg_proc + 1 
 	SET  @pError    =  'Existen diferencias entre CONTPAQ y  ERP '
---    SELECT 'E1 ' + @pError
+ --   SELECT 'E1 ' + @pError
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(),' '))
-    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
-  END
-  ELSE
-  BEGIN
-    SET @imp_fact_ind  = 
-   (SELECT SUM(cq.IMP_BRUTO) FROM CI_COM_FISC_CONTPAQ cq  WHERE
-	       cq.CVE_EMPRESA  =  @pCveEmpresa   AND
-		   cq.ANO_MES      =  @pAnoMes       AND
-		   cq.ESTADO       =  @k_activa)    
-
-    SET @imp_fact_ind_can  =
-   (SELECT SUM(cq.IMP_BRUTO) FROM CI_COM_FISC_CONTPAQ cq  WHERE
-	       cq.CVE_EMPRESA  =  @pCveEmpresa   AND
-		   cq.ANO_MES      =  @pAnoMes       AND
-		   cq.ESTADO       = @k_cancelada)    
-
-    SET @imp_iva_ind  = 
-   (SELECT SUM(cq.IMP_IMPUESTO) FROM CI_COM_FISC_CONTPAQ cq  WHERE
-	       cq.CVE_EMPRESA  =  @pCveEmpresa   AND
-		   cq.ANO_MES      =  @pAnoMes       AND
-		   cq.ESTADO       =  @k_activa)    
-    SET @imp_iva_ind_can  =
-   (SELECT SUM(cq.IMP_IMPUESTO) FROM CI_COM_FISC_CONTPAQ cq  WHERE
-	       cq.CVE_EMPRESA  =  @pCveEmpresa   AND
-		   cq.ANO_MES      =  @pAnoMes       AND
-		   cq.ESTADO       = @k_cancelada)    
-
-	EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_factura,  @imp_fact_ind, @k_no_act 
-    EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_fact_can, @imp_fact_ind_can, @k_no_act 
-	EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_iva,  @imp_iva_ind, @k_no_act 
-    EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_iva_can, @imp_iva_ind_can, @k_no_act 
-
-    EXEC spInsIsrItem @pCveEmpresa, @pAnoMes,  @k_ing_factura, @imp_fact_ind
-    EXEC spInsIsrItem @pCveEmpresa, @pAnoMes,  @k_fac_cancel, @imp_fact_ind_can
-
+    EXEC spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
   END
    
   END TRY

@@ -10,7 +10,7 @@ BEGIN
   DROP  PROCEDURE spCCFacturacion
 END
 GO
---EXEC spCCFacturacion 'CU','201901','F'
+--EXEC spCCFacturacion 'CU','201904','F'
 CREATE PROCEDURE [dbo].[spCCFacturacion]
 (
  @pCveEmpresa varchar(6),
@@ -44,20 +44,38 @@ BEGIN
   f.IMP_F_IVA AS 'Imp. IVA',
   IMP_F_NETO AS 'Imp. Neto',
   f.CVE_F_MONEDA AS 'Moneda',
-  dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION) AS 'Tipo Cambio',
   CASE
-  WHEN f.CVE_F_MONEDA  =  @k_dolar
-  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+  WHEN f.CVE_F_MONEDA  =  @k_dolar AND f.SIT_TRANSACCION = @k_activa
+  THEN dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+  WHEN f.CVE_F_MONEDA  =  @k_dolar AND f.SIT_TRANSACCION = @k_cancelada
+  THEN dbo.fnObtTipoCamCan(@pCveEmpresa, dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) )
+  ELSE 0 
+  END AS 'Tipo Cambio',
+  CASE
+  WHEN f.CVE_F_MONEDA  =  @k_dolar AND f.SIT_TRANSACCION = @k_activa
+  THEN f.IMP_F_BRUTO *
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+  WHEN f.CVE_F_MONEDA  =  @k_dolar AND f.SIT_TRANSACCION = @k_cancelada
+  THEN f.IMP_F_BRUTO *
+  dbo.fnObtTipoCamCan(@pCveEmpresa, dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) )
   ELSE f.IMP_F_BRUTO
   END AS 'Imp. Bruto (p)',
   CASE
-  WHEN f.CVE_F_MONEDA  =  @k_dolar
-  THEN f.IMP_F_IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+  WHEN f.CVE_F_MONEDA  =  @k_dolar AND f.SIT_TRANSACCION = @k_activa
+  THEN f.IMP_F_IVA *
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+  WHEN f.CVE_F_MONEDA  =  @k_dolar AND f.SIT_TRANSACCION = @k_cancelada
+  THEN f.IMP_F_IVA *
+  dbo.fnObtTipoCamCan(@pCveEmpresa, dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) )
   ELSE f.IMP_F_IVA
   END AS 'Imp. Iva (p)',
   CASE
-  WHEN f.CVE_F_MONEDA  =  @k_dolar
-  THEN f.IMP_F_NETO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+  WHEN f.CVE_F_MONEDA  =  @k_dolar AND f.SIT_TRANSACCION = @k_activa
+  THEN f.IMP_F_NETO *
+  dbo.fnObtTipoCambC(@pCveEmpresa, dbo.fnObtAnoMesFact(@pAnoMes, f.SIT_TRANSACCION,f.F_OPERACION),f.F_OPERACION)
+  WHEN f.CVE_F_MONEDA  =  @k_dolar AND f.SIT_TRANSACCION = @k_cancelada
+  THEN f.IMP_F_NETO *
+  dbo.fnObtTipoCamCan(@pCveEmpresa, dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) )
   ELSE f.IMP_F_NETO
   END AS 'Imp. Neto (p)'
   FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
@@ -83,20 +101,22 @@ BEGIN
   f.IMP_F_IVA AS 'Imp. IVA',
   IMP_F_NETO AS 'Imp. Neto',
   f.CVE_F_MONEDA AS 'Moneda',
-  dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION) AS 'Tipo Cambio',
+  dbo.fnObtTipoCamCan(@pCveEmpresa, @pAnoMes) AS 'Tipo Cambio',
   CASE
   WHEN f.CVE_F_MONEDA  =  @k_dolar
-  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
-  ELSE f.IMP_F_BRUTO
+  THEN f.IMP_F_BRUTO *
+  dbo.fnObtTipoCamCan(@pCveEmpresa, @pAnoMes)  ELSE f.IMP_F_BRUTO
   END AS 'Imp. Bruto (p)',
   CASE
   WHEN f.CVE_F_MONEDA  =  @k_dolar
-  THEN f.IMP_F_IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+  THEN f.IMP_F_IVA *
+  dbo.fnObtTipoCamCan(@pCveEmpresa, @pAnoMes)
   ELSE f.IMP_F_IVA
   END AS 'Imp. IVA (p)',
   CASE
   WHEN f.CVE_F_MONEDA  =  @k_dolar
-  THEN f.IMP_F_NETO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+  THEN f.IMP_F_NETO *
+  dbo.fnObtTipoCamCan(@pCveEmpresa, @pAnoMes)
   ELSE f.IMP_F_NETO
   END AS 'Imp. Neto (p)'
   FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c
@@ -111,7 +131,7 @@ BEGIN
   END
   ELSE
   BEGIN
- 
+  -- Operaciones Canceladas de Meses Anteriores 
   SELECT 
   f.F_OPERACION AS 'F. Operación',
   f.F_CANCELACION AS 'F. Cancelación',
@@ -125,20 +145,23 @@ BEGIN
   f.IMP_F_IVA AS 'Imp. IVA',
   IMP_F_NETO AS 'Imp. Neto',
   f.CVE_F_MONEDA AS 'Moneda',
-  dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION) AS 'Tipo Cambio',
+  dbo.fnObtTipoCamCan(@pCveEmpresa, dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) ) AS 'Tipo Cambio',
   CASE
   WHEN f.CVE_F_MONEDA  =  @k_dolar
-  THEN f.IMP_F_BRUTO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+  THEN f.IMP_F_BRUTO *
+  dbo.fnObtTipoCamCan(@pCveEmpresa, dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) )
   ELSE f.IMP_F_BRUTO
   END AS 'Imp. Bruto (p)',
   CASE
   WHEN f.CVE_F_MONEDA  =  @k_dolar
-  THEN f.IMP_F_IVA * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+  THEN f.IMP_F_IVA *
+  dbo.fnObtTipoCamCan(@pCveEmpresa, dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) )
   ELSE f.IMP_F_IVA
   END AS 'Imp. IVA (p)',
   CASE
   WHEN f.CVE_F_MONEDA  =  @k_dolar
-  THEN f.IMP_F_NETO * dbo.fnObtTipoCambC(@pCveEmpresa, @pAnoMes,f.F_OPERACION)
+  THEN f.IMP_F_NETO *
+  dbo.fnObtTipoCamCan(@pCveEmpresa, dbo.fnArmaAnoMes (YEAR(f.F_OPERACION), MONTH(f.F_OPERACION)) )
   ELSE f.IMP_F_NETO
   END AS 'Imp. Neto (p)'
   FROM    CI_FACTURA f, CI_VENTA v , CI_CLIENTE c

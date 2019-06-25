@@ -12,7 +12,7 @@ BEGIN
   DROP  PROCEDURE spConcSatCXP
 END
 GO
---EXEC spConcSatCXP 'CU','MARIO', '201902',1,2,' ',' '
+--EXEC spConcSatCXP 'CU','MARIO', '201903',1,2,' ',' '
 CREATE PROCEDURE [dbo].[spConcSatCXP]
 (
 --@pIdProceso       numeric(9),

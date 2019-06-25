@@ -1,7 +1,7 @@
 USE [ADMON01]
 GO
 
---exec spTranEgresos 'CU', 'MARIO', '201804', 5, 443, ' ', ' '
+--exec spTranEgresos 'CU', 'MARIO', '201902', 1, 1, ' ', ' '
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
