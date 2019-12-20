@@ -18,7 +18,6 @@ CREATE PROCEDURE [dbo].[spObtCampoTxt]
 @pCodigoUsuario varchar(20),
 @pIdCliente     int,
 @pCveEmpresa    varchar(4),
-@pIdFormato     int,
 @pRowFile       varchar(max),
 @pTipoCampo     varchar(1), 
 @pPosIni        int,

@@ -1,0 +1,49 @@
+USE [DICCIONARIO]
+GO
+--exec spInfTabla  'DICCIONARIO', 'FC_CONSTR_CAMPO'
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+SET NOCOUNT ON
+GO
+SET XACT_ABORT ON
+GO
+
+IF  EXISTS( SELECT 1 FROM DICCIONARIO.sys.procedures WHERE Name =  'spInfTabla')
+DROP PROCEDURE [dbo].[spInfTabla]
+GO
+CREATE PROCEDURE spInfTabla
+@pBaseDatos  varchar(15),
+@pNomTabla   varchar(30)
+
+AS
+BEGIN
+  DECLARE  @version     int
+
+  DECLARE  @k_verdadero      bit   = 1,
+           @k_llave_primaria varchar(2)
+
+  SELECT  @version = MAX(ULT_VERSION) FROM FC_BASE_DATOS WHERE BASE_DATOS = @pBaseDatos AND B_PROTEGIDA = @k_verdadero
+
+  SET  @version = ISNULL(@version,0)
+
+  IF  @version <> 0
+  BEGIN  
+  
+    SELECT NOM_CAMPO,
+    CASE
+    WHEN EXISTS (SELECT 1 FROM FC_CONSTRAINT c, FC_CONSTR_CAMPO cc WHERE
+    c.NOM_TABLA = tc.NOM_TABLA AND c.NOM_CONSTRAINT = cc.NOM_CONSTRAINT AND cc.NOM_CAMPO = tc.NOM_CAMPO)
+    THEN @k_llave_primaria
+    ELSE ' '
+    END AS PK,
+    ISNULL((SELECT cc.POSICION FROM FC_CONSTRAINT c, FC_CONSTR_CAMPO cc WHERE
+    c.NOM_TABLA = tc.NOM_TABLA AND c.NOM_CONSTRAINT = cc.NOM_CONSTRAINT AND cc.NOM_CAMPO = tc.NOM_CAMPO), 0) AS SEC,
+    TIPO_CAMPO, LONGITUD, ENTEROS, DECIMALES, B_NULO, B_IDENTITY
+    FROM FC_TABLA_COLUMNA tc WHERE BASE_DATOS = @pBaseDatos AND VERSION = @version  AND NOM_TABLA = @pNomTabla 
+    ORDER BY PK DESC, SEC
+
+  END
+
+END

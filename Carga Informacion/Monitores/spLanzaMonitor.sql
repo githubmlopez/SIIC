@@ -14,7 +14,7 @@ BEGIN
   DROP  PROCEDURE spLanzaMonitor
 END
 GO
---EXEC dbo.spLanzaMonitor 0,'MARIO',1,'CU','CARGAINF','CARGASAT','201901',' ',' '
+--EXEC dbo.spLanzaMonitor 0,'MARIO',1,'CU','CARGAINF','ETAPA3','201906',' ',' '
 CREATE PROCEDURE [dbo].[spLanzaMonitor]
 (
 @pIdProceso       numeric(9),

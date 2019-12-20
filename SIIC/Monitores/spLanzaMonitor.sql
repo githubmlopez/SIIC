@@ -28,6 +28,7 @@ GO
 -- Porceso que concilia la balanza previa con Balanza del COI
 -- Antes de correr este proceso se debe general actualizar pólizas en el COI y general balanza
 --EXEC spLanzaMonitor 'CU', 'MLOPEZ', '201805', 'E6M1COCOI', 0
+--EXEC spLanzaMonitor 'CU', 'MLOPEZ', '201906', 'E7CARGET1', 0
 IF  EXISTS( SELECT 1 FROM ADMON01.sys.procedures WHERE Name =  'spLanzaMonitor')
 BEGIN
   DROP  PROCEDURE spLanzaMonitor

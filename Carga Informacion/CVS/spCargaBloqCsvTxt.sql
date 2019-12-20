@@ -19,8 +19,9 @@ CREATE PROCEDURE [dbo].[spCargaBloqCsvTxt]
 @pCodigoUsuario  varchar(20),
 @pIdCliente      int,
 @pCveEmpresa     varchar(4),
-@pIdFormato      int,
+@pTipoInfo       int,
 @pIdBloque       int,
+@pIdFormato      int,
 @pNumCampos      int,
 @pResIni         int ,
 @pResFin         int, 
@@ -33,7 +34,6 @@ CREATE PROCEDURE [dbo].[spCargaBloqCsvTxt]
 )
 AS
 BEGIN
---  SELECT 'ENTRO CARGA BLOQUE'
   --CREATE TABLE #FILEP 
   --(id_renglon  int identity,
   -- Rowfile     varchar(max))
@@ -91,12 +91,11 @@ BEGIN
 --	  SELECT 'CICLO COL ' + CONVERT(VARCHAR(10), @num_columna )
       SELECT @tipo_campo = CVE_TIPO_CAMPO, @pos_ini = POS_INICIAL, @pos_fin = POS_FINAL
 	  FROM  FC_CARGA_POSIC  WHERE 
-	  ID_CLIENTE  = @pIdCliente  AND
-      CVE_EMPRESA = @pCveEmpresa AND
-      ID_FORMATO  = @pIdFormato  AND
-      ID_BLOQUE   = @pIdBloque   AND
-	  NUM_COLUMNA = @num_columna    
---	  select 'tipo campo ' + @tipo_campo
+	  ID_CLIENTE        = @pIdCliente  AND
+      CVE_EMPRESA       = @pCveEmpresa AND
+      TIPO_INFORMACION  = @pTipoInfo   AND
+      ID_BLOQUE         = @pIdBloque   AND
+	  NUM_COLUMNA       = @num_columna    
 
       IF  @pCveTipoArchivo  =  @k_csv OR  @pCveTipoArchivo  = @k_directorio OR
 	     (@pCveTipoArchivo  =  @k_txt AND @pBSeparador = @k_verdadero)
@@ -107,7 +106,6 @@ BEGIN
              @pCodigoUsuario,
              @pIdCliente,
              @pCveEmpresa,
-             @pIdFormato,
              @row_file,
              @tipo_campo,
 			 @pCarSeparador, 
@@ -117,6 +115,7 @@ BEGIN
              @pError OUT,
              @pMsgError OUT
 --      SELECT ' CAMPO ' + @campo
+
       END
 	  ELSE
 	  BEGIN
@@ -126,7 +125,6 @@ BEGIN
              @pCodigoUsuario,
              @pIdCliente,
              @pCveEmpresa,
-             @pIdFormato,
              @row_file,
              @tipo_campo,
 			 @pos_ini,
@@ -141,8 +139,9 @@ BEGIN
 	  (
 	  ID_CLIENTE,
 	  CVE_EMPRESA,
-	  ID_FORMATO,
+	  TIPO_INFORMACION,
 	  ID_BLOQUE,
+	  ID_FORMATO,
 	  PERIODO,
 	  NUM_REGISTRO,
 	  NUM_COLUMNA,
@@ -152,8 +151,9 @@ BEGIN
 	  (
 	  @pIdCliente,
 	  @pCveEmpresa,
-	  @pIdFormato,
+	  @pTipoInfo,
 	  @pIdBloque,
+	  @pIdFormato,
 	  @pPeriodo,
 	  @RowCount,
 	  @num_columna,

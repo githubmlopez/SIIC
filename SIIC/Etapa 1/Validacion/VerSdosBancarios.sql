@@ -6,7 +6,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
--- exec spVerSdosBancarios  'CU', 'MLOPEZ', '201902', 12,371, ' ', ' '
+-- exec spVerSdosBancarios  'CU', 'MLOPEZ', '201906', 12,371, ' ', ' '
 ALTER PROCEDURE [dbo].[spVerSdosBancarios] @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                            @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
 								           @pMsgError varchar(400) OUT
@@ -24,6 +24,7 @@ BEGIN
             @cargos        numeric(12,2),
             @abonos        numeric(12,2),
             @diferencia    numeric(12,2),
+	        @tipo_chequera varchar(2),
 			@num_reg_proc  int = 0
 
   DECLARE   @k_activa      varchar(1)   =  'A',
@@ -35,7 +36,8 @@ BEGIN
    		    @k_activo      varchar(1)   =  'A',
 			@k_error       varchar(1)   =  'E',
 			@k_no_act      numeric(9,0) = 99999,
-			@k_no_aplica   varchar(2)   = 'NA'
+			@k_no_aplica   varchar(2)   = 'NA',
+			@k_chequera    varchar(2)   = 'CH'
 
   DECLARE   @NunRegistros  int, 
             @RowCount      int,
@@ -43,11 +45,14 @@ BEGIN
 		    @cve_ind_cargo varchar(10),
 			@cve_ind_abono varchar(10)
           
-  DECLARE SALBANC CURSOR FOR SELECT  cp.ANO_MES, cp.CVE_CHEQUERA, cp.F_INICIO, cp.F_FIN, cp.SDO_INICIO_MES, cp.SDO_FIN_MES
-  FROM  CI_CHEQUERA_PERIODO cp WHERE cp.ANO_MES  =  @pAnoMes
-
+  DECLARE SALBANC CURSOR FOR SELECT  cp.ANO_MES, cp.CVE_CHEQUERA, cp.F_INICIO, cp.F_FIN, cp.SDO_INICIO_MES, cp.SDO_FIN_MES, ch.CVE_TIPO_CHEQ
+  FROM  CI_CHEQUERA_PERIODO cp, CI_CHEQUERA ch
+  WHERE
+  cp.ANO_MES      =  @pAnoMes       AND
+  cp.CVE_CHEQUERA = ch.CVE_CHEQUERA
+  
   OPEN  SALBANC 
-  FETCH SALBANC INTO  @ano_mes, @chequera, @f_inicio, @f_fin, @saldo_ini, @saldo_fin  
+  FETCH SALBANC INTO  @ano_mes, @chequera, @f_inicio, @f_fin, @saldo_ini, @saldo_fin, @tipo_chequera  
 	                                      
   WHILE (@@fetch_status = 0 )
   BEGIN 
@@ -118,9 +123,17 @@ BEGIN
         M.SIT_CONCILIA_BANCO   =  @k_no_concilia)) AS oper
 
 
-  UPDATE CI_CHEQUERA_PERIODO SET SDO_FIN_MES_CALC = @saldo_ini + @abonos - @cargos WHERE ANO_MES = @ano_mes AND CVE_CHEQUERA = @chequera
-
-  FETCH SALBANC INTO  @ano_mes, @chequera, @f_inicio, @f_fin, @saldo_ini, @saldo_fin 
+  IF  @tipo_chequera = @k_chequera 
+  BEGIN
+    UPDATE CI_CHEQUERA_PERIODO SET SDO_FIN_MES_CALC = @saldo_ini + @abonos - @cargos WHERE ANO_MES = @ano_mes AND CVE_CHEQUERA = @chequera
+  END
+  ELSE
+  BEGIN
+--    SELECT @tipo_chequera, ' ' + CONVERT(varchar(18),@saldo_ini)  + ' ' + CONVERT(varchar(18),@cargos) + ' ' + CONVERT(varchar(18),@abonos) 
+    UPDATE CI_CHEQUERA_PERIODO SET SDO_FIN_MES_CALC = (@saldo_ini) - @abonos + @cargos WHERE ANO_MES = @ano_mes AND CVE_CHEQUERA = @chequera
+--    SELECT CONVERT(varchar(18),(@saldo_ini) - @abonos + @cargos)
+  END
+  FETCH SALBANC INTO  @ano_mes, @chequera, @f_inicio, @f_fin, @saldo_ini, @saldo_fin, @tipo_chequera 
 
   END
 
@@ -133,7 +146,8 @@ BEGIN
     SET  @num_reg_proc = @num_reg_proc + 1
 	SET  @pError    =  'Error en Saldos Bancarios ' +  ' ' 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(),' '))
-    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError  
+    SELECT @pMsgError
+--    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError  
   END
 
   CLOSE SALBANC 

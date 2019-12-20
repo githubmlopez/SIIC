@@ -7,8 +7,10 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
---EXEC spCreaTypes
+--EXEC spCreaTypes 'DICCIONARIO'
 ALTER PROCEDURE  [dbo].[spCreaTypes]  
+@pBaseDatos varCHAR(15)
+
 AS
 BEGIN
 
@@ -57,8 +59,8 @@ BEGIN
 
 -- Cursor Tabla
 
-  DECLARE cur_tabla cursor for SELECT NOM_TABLA FROM FC_TABLA WHERE NOM_TABLA <> 'Sysdiagrams' 
-  -- AND NOM_TABLA = 'CI_TRASP_BANCARIO'
+  DECLARE cur_tabla cursor for SELECT NOM_TABLA FROM FC_TABLA WHERE BASE_DATOS = @pBaseDatos AND NOM_TABLA <> 'Sysdiagrams' 
+  -- AND NOM_TABLA = 'FC_TABLA'
 
   OPEN  cur_tabla
 
@@ -99,11 +101,13 @@ BEGIN
      DECIMALES,
      POSICION,
      B_NULO
-     FROM FC_TABLA_COLUMNA where
+     FROM FC_TABLA_COLUMNA WHERE
+     BASE_DATOS = @pBaseDatos AND
      NOM_TABLA = @nom_tabla ORDER BY POSICION
       
      SELECT @num_campos = COUNT(*)
-     FROM FC_TABLA_COLUMNA where
+     FROM FC_TABLA_COLUMNA WHERE
+     BASE_DATOS = @pBaseDatos AND
      NOM_TABLA = @nom_tabla 
   
      OPEN  cur_tabla_columna

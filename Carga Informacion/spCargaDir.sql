@@ -21,7 +21,8 @@ CREATE PROCEDURE [dbo].[spCargaDir]
 @pIdCliente       int,
 @pCveEmpresa      varchar (4),
 @pCveAplicacion   varchar (10),
-@pPatCalc         varchar (50),
+@pPatCalc         varchar (100),
+@pExtension       varchar (10),
 @pError           varchar (80) OUT,
 @pMsgError        varchar (400) OUT
 )
@@ -36,25 +37,25 @@ BEGIN
    (Rowfile     varchar(max))
   END
  
-  SET @CMD = 'DIR ' + @pPatCalc
---  SELECT @CMD
+  SET @CMD = LTRIM('DIR ' + @pPatCalc)
+--  SELECT @CMD --*
 -- Almacenar resultado del comando 
   INSERT INTO #FILEP  
   EXEC MASTER..xp_cmdshell   @CMD 
---  SELECT * FROM #FILEP
+ -- SELECT * FROM #FILEP
 --  Depuración de archivo 
+
   DELETE 
   FROM   #FILEP 
   WHERE  Rowfile NOT LIKE '[0-9][0-9]/[0-9][0-9]/[0-9][0-9][0-9][0-9] %' 
   OR Rowfile LIKE '%<DIR>%' 
-  OR Rowfile NOT LIKE '%pdf%' 
-  OR Rowfile NOT LIKE '%' + @pCveEmpresa + '%' 
+  OR Rowfile NOT LIKE '%' + @pExtension + '%' 
   OR Rowfile is null
 
+--  SELECT * FROM #FILEP
+
   UPDATE #FILEP SET Rowfile =
-  SUBSTRING(Rowfile,CHARINDEX(@pCveEmpresa,Rowfile),LEN(Rowfile))
-  UPDATE #FILEP SET Rowfile =
-  SUBSTRING(Rowfile,1,CHARINDEX('.pdf',Rowfile) - 1)
+  SUBSTRING(Rowfile,CHARINDEX(' ',REVERSE(Rowfile)) + 1,LEN(Rowfile))
 
 --  SELECT * FROM #FILEP
 END

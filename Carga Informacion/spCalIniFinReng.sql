@@ -20,7 +20,6 @@ CREATE PROCEDURE [dbo].[spCalIniFinReng]
 @pCodigoUsuario  varchar(20),
 @pIdCliente      int,
 @pCveEmpresa     varchar(4),
-@pIdFormato      int,
 @pPeriodo        varchar(8),
 @pCveTipoBloque  varchar(4),
 @pNumRengIni     int,
@@ -52,6 +51,7 @@ BEGIN
 		   @k_pos_den_ind    varchar(4) = 'DEIN',
 		   @k_pos_ini_ind    varchar(4) = 'PIIN'
 
+  -- Para estos tipos de bloque se determina la posición inicial del bloque por una cadena de caracteres especificado
   IF  @pCveTipoBloque  IN  (@k_pos_den_cf, @k_pos_den_fin, @k_pos_den_eof, @k_pos_den_ind)
   BEGIN
 	SELECT  @num_pos_c_ini = id_renglon FROM  #FILE  WHERE
@@ -59,11 +59,16 @@ BEGIN
 			LTRIM(SUBSTRING(@pCadenaEnca,1,LEN(@pCadenaEnca))) + '%'
     SET  @pResIni  =  @num_pos_c_ini + @pNumRengCad  
   END
-  
+
+  -- Para estos tipos de bloque se determina la posición inicial del bloque se determina por la posición inicial indicada en los 
+  -- parámetros de carga
   IF  @pCveTipoBloque  IN  (@k_pos_ini_fin, @k_pos_ini_cf, @k_pos_ini_eof, @k_pos_ini_ind)
   BEGIN
     SET  @pResIni  =  @pNumRengIni   
   END
+
+  -- Para estos tipos de bloque se determina la posición final del bloque se determina por la busqueda del caracter final especificado
+  -- en los parámetros de carga
 
   IF  @pCveTipoBloque  IN  (@k_pos_den_cf, @k_pos_ini_cf)
   BEGIN
@@ -74,10 +79,14 @@ BEGIN
     SET  @pResFin  =  @num_pos_c_fin - 1   
   END
 
+  -- Para estos tipos de bloque se determina la posición final por la posición final especificada en los parámetros de carga
+
   IF  @pCveTipoBloque  IN  (@k_pos_ini_fin, @k_pos_den_fin, @k_pos_den_ind, @k_pos_ini_ind)
   BEGIN
     SET  @pResFin  =  @pNumRengFin 
   END
+
+  -- Para estos tipos de bloque se determina la posición final por el fin de registros determinado por mismo archivo CSV
 
   IF  @pCveTipoBloque  IN  (@k_pos_ini_eof, @k_pos_den_eof)
   BEGIN

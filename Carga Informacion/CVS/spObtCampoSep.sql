@@ -18,7 +18,6 @@ CREATE PROCEDURE [dbo].[spObtCampoSep]
 @pCodigoUsuario varchar(20),
 @pIdCliente     int,
 @pCveEmpresa    varchar(4),
-@pIdFormato     int,
 @pRowFile       varchar(max),
 @pTipoCampo     varchar(1),
 @pSeparador     varchar(1), 
@@ -41,10 +40,9 @@ BEGIN
   SET @b_despliega = 1  
 
   SET @pPosicion = 0
-
   IF  SUBSTRING(@pRowFile,1,1) = char(34)
   BEGIN
-	SET @k_delimitador = char(34)
+ 	SET @k_delimitador = char(34)
 	SET @pRowFile  = SUBSTRING(@pRowFile,2,LEN(@pRowFile))
 	SET @pPosicion    = CHARINDEX(@k_delimitador, @pRowFile)
     SET @pCampo = RTRIM(LTRIM(SUBSTRING(@pRowFile,1,@pPosicion - 1)))
@@ -52,11 +50,10 @@ BEGIN
   END
   ELSE
   BEGIN
-	SET @pPosicion    = CHARINDEX(@pSeparador, @pRowFile)
+ 	SET @pPosicion    = CHARINDEX(@pSeparador, @pRowFile)
 	IF  @pPosicion <> 0
 	BEGIN
 	  SET @pCampo = RTRIM(LTRIM(SUBSTRING(@pRowFile,1,@pPosicion - 1)))
---      SELECT 'POS ' + CONVERT(VARCHAR(10), @pPosicion) + ' ' + @pCampo, ' ' + @pRowFile
 	  SET @pRowFileo  = SUBSTRING(@pRowFile,@pPosicion + 1,LEN(@pRowFile))
 	END
     ELSE

@@ -4,7 +4,8 @@ GO
 SELECT 
 f.CVE_EMPRESA as 'Empresa', F.SERIE as 'Serie', f.ID_CXC as 'Id. CXC',
 i.ID_ITEM 'Id. Item', f.F_OPERACION as 'F. Operacion',
-c.ID_CLIENTE as 'Id. Cliente',c.NOM_CLIENTE as 'Nombre', s.DESC_SUBPRODUCTO as 'Producto', 
+c.ID_CLIENTE as 'Id. Cliente', i.CVE_VENDEDOR1 'Vemdedor 1', i.CVE_VENDEDOR2 'Vemdedor 2',
+c.NOM_CLIENTE as 'Nombre', s.DESC_SUBPRODUCTO as 'Producto', 
 f.CVE_F_MONEDA as 'Moneda', f.IMP_F_BRUTO as 'Imp. Bruto', i.IMP_BRUTO_ITEM as 'Imp. B. Item',
 f.TIPO_CAMBIO_LIQ,
 CASE
@@ -28,11 +29,11 @@ i.CVE_SUBPRODUCTO = s.CVE_SUBPRODUCTO and
 s.CVE_PRODUCTO = p.CVE_PRODUCTO       and
 f.SIT_TRANSACCION = 'A'               and
 f.SERIE <> 'LEGACY'                   and
---i.CVE_VENDEDOR1  =  'DAFU'          and
-YEAR(f.F_OPERACION) IN (2017)         and 
+(isnull(CVE_VENDEDOR1,' ') IN ('DAFU')  OR isnull(CVE_VENDEDOR2, ' ')  IN ('DAFU')) and
+YEAR(f.F_OPERACION) IN (2019) and      
 s.CVE_PRODUCTO IN ('PO','PE')   
-order by f.F_OPERACION
-
+order by f.F_OPERACION,
+s.DESC_SUBPRODUCTO 
 --SELECT cp.ID_PROVEEDOR, p.NOM_PROVEEDOR, cp.TX_NOTA, cp.CVE_MONEDA,
 --cp.IMP_BRUTO, cp.IMP_IVA, cp.IMP_NETO,
 --CASE

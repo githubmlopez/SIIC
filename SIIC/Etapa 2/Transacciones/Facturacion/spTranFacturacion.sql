@@ -467,7 +467,10 @@ BEGIN
 	  BEGIN
         SET  @imp_neto_p_op  =  @imp_neto_p *  -1 
 --      SELECT ' VOY A ACTUALIZAR ' + CONVERT(VARCHAR(10), @imp_neto_p_op ) 
-        UPDATE CI_PERIODO_ISR SET IMP_CANC_UTILIDAD = 0 WHERE ANO_MES = @pAnoMes
+        UPDATE CI_PERIODO_ISR SET IMP_CANC_UTILIDAD = 0 WHERE
+		CVE_EMPRESA = @pCveEmpresa  AND
+		ANO_MES     = @pAnoMes
+
 	    EXEC spInsIsrItem @pCveEmpresa, @pAnoMes,  @k_can_util_camb,  @imp_neto_p
 		SET  @cve_oper_cont  =  @k_util_canc
 	  END

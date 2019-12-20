@@ -50,11 +50,11 @@ p.CVE_PRODUCTO       =  'PO'                 AND
 f.ID_VENTA           =  v.ID_VENTA           AND
 v.ID_CLIENTE         =  c.ID_CLIENTE         AND
 f.SIT_TRANSACCION    =  'A'                  AND
-DATEDIFF(DAY, @f_referencia2,i.F_FIN) > 0    AND
+--DATEDIFF(DAY, @f_referencia2,i.F_FIN) > 0    AND
 i.F_INICIO           IS NOT NULL             AND
 i.F_INICIO           <> '1900-01-01'         AND
 f.SERIE              <> 'LEGACY'             AND
---DATEPART(YEAR, F_INICIO) IN (2015,2016,2017)
+DATEPART(YEAR, F_INICIO) IN (2019)           AND
 NOT EXISTS
 (SELECT 1  
 FROM CI_VENTA vs, CI_FACTURA f2, CI_ITEM_C_X_C i2, CI_SUBPRODUCTO s2, CI_PRODUCTO p2, CI_VENTA v2, CI_CLIENTE c2 

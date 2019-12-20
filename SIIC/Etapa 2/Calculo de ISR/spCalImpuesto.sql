@@ -8,7 +8,7 @@ GO
 SET NOCOUNT ON
 GO
 --DECLARE @pError varchar(80) , @pMsgError varchar(400) 
---exec spCalImpuesto 'CU','MARIO', '201902', 1, 2, ' ', ' '
+--exec spCalImpuesto 'CU','MARIO', '201906', 1, 2, ' ', ' '
 
 ALTER PROCEDURE [dbo].[spCalImpuesto]  @pCveEmpresa varchar(4), @pCveUsuario varchar(8), @pAnoMes  varchar(6), 
                                        @pIdProceso numeric(9), @pIdTarea numeric(9), @pError varchar(80) OUT,
@@ -41,6 +41,8 @@ BEGIN
 		 @imp_isr_banc_acum numeric(16,2)  = 0,
 		 @imp_pag_prov_ant  numeric(16,2)  = 0,
 		 @imp_isr_compensa  numeric(16,2)  = 0,
+		 @imp_efect_pagado  numeric(16,2)  = 0,
+		 @imp_dif_efect_pag numeric(16,2)  = 0,
          @imp_isr           numeric(16,2)  = 0
 
 
@@ -56,8 +58,23 @@ declare  @k_diciembre       int         =  12,
          @k_enero           int         =  01,
          @k_falso           bit         =  0,
          @k_verdadero       bit         =  1,
-		 @k_error           varchar(1)  =  'E'
---		 @k_no_act          numeric(9,0) =  99999
+		 @k_error           varchar(1)  =  'E',
+		 @k_no_act          numeric(9,0) =  99999,
+         @k_ingresos        varchar(6)   = 'VERISR',
+		 @k_fac_cancela     varchar(6)   = 'VERISR2',
+		 @k_int_banc        varchar(6)   = 'VERISR3',
+		 @k_ut_camb         varchar(6)   = 'VERISR4',
+		 @k_isr_banc        varchar(6)   = 'VERISR5',
+		 @k_isr_favor       varchar(6)   = 'VERISR6',
+		 @k_isr_pag_prov    varchar(6)   = 'VERISR7',
+		 @k_dif_pago_isr    varchar(6)   = 'VERISR8',
+		 @k_cerrado         varchar(1)   = 'C'
+
+
+  IF  (SELECT SIT_PERIODO FROM CI_PERIODO_CONTA WHERE 
+       CVE_EMPRESA = @pCveEmpresa   AND
+	   ANO_MES     = @pAnoMes)  <>  @k_cerrado 
+  BEGIN
 
   SET  @ano  =  CONVERT(INT,SUBSTRING(@pAnoMes,1,4))
   SET  @mes  =  CONVERT(INT,SUBSTRING(@pAnoMes,5,2))
@@ -80,7 +97,7 @@ declare  @k_diciembre       int         =  12,
          @imp_vta_activos   =  IMP_VTA_ACTIVOS,  @imp_otro_gtos_iva  =  IMP_OTRO_GTOS_IVA,  @imp_otr_produc  =  IMP_OTR_PRODUC,
          @imp_invent_acum   =  IMP_INVENT_ACUM,  @coef_utilidad  =  COEF_UTLIDAD,  @tasa_isr  =  TASA_ISR,
 		 @imp_isr_compensa  =  IMP_ISR_COMPENSA, @imp_isr_bancario  =  IMP_ISR_BANCARIO, @imp_per_fisc_pa  = IMP_PER_FISC_PA,
-		 @imp_canc_utilidad =  IMP_CANC_UTILIDAD 
+		 @imp_canc_utilidad =  IMP_CANC_UTILIDAD , @imp_efect_pagado = IMP_EFECT_PAGADO  
   FROM   CI_PERIODO_ISR  WHERE CVE_EMPRESA  =  @pCveEmpresa  AND  ANO_MES  =  @pAnoMes
 
   SET  @imp_ing_grabados  =  @imp_ingresos  +   @imp_vta_activos  +  @imp_otro_gtos_iva 
@@ -113,7 +130,9 @@ declare  @k_diciembre       int         =  12,
 
   SET  @imp_pag_prov_ant  =  @imp_isr_periodo  -  @imp_isr_mes_ant  -  @imp_isr_banc_acum
 
-  SET  @imp_isr  =   @imp_pag_prov_ant  -  @imp_isr_compensa 
+  SET  @imp_isr  =   @imp_pag_prov_ant  -  @imp_isr_compensa
+  
+  SET  @imp_dif_efect_pag  =   @imp_pag_prov_ant - @imp_isr_compensa - @imp_efect_pagado
 
   BEGIN  TRY
 
@@ -132,22 +151,33 @@ declare  @k_diciembre       int         =  12,
 		IMP_ISR_BANC_ACUM  =  @imp_isr_banc_acum,
 		IMP_PAG_PROV_PER   =  @imp_pag_prov_ant,  
         IMP_ISR            =  @imp_isr
-   WHERE  CVE_EMPRESA  =  @pCveEmpresa  AND  ANO_MES  = @pAnoMes 
- 
-   --EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_factura,  @imp_fact_ind, @k_no_act 
-   --EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_factura,  @imp_fact_ind, @k_no_act 
-   --EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_factura,  @imp_fact_ind, @k_no_act 
-   --EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_factura,  @imp_fact_ind, @k_no_act 
-   --EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ind_factura,  @imp_fact_ind, @k_no_act 
+  WHERE  CVE_EMPRESA  =  @pCveEmpresa  AND  ANO_MES  = @pAnoMes 
 
-   END  TRY
+  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ingresos,       @imp_ing_grabados,  @k_no_act 
+  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_fac_cancela,    @imp_cancelado,     @k_no_act 
+  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_int_banc,       @imp_int_bancario,  @k_no_act 
+  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_ut_camb,        @imp_otr_produc,    @k_no_act 
+  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_isr_banc,       @imp_isr_bancario,  @k_no_act 
+  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_isr_favor,      @imp_isr_compensa,  @k_no_act 
+  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_isr_pag_prov,   @imp_efect_pagado,  @k_no_act
+  EXEC spInsIndicador @pCveEmpresa, @pAnoMes, @k_dif_pago_isr,   @imp_dif_efect_pag, @k_no_act 
+  
+  END  TRY
 
-   BEGIN CATCH
+  BEGIN CATCH
     SET  @pError    =  'Error de Ejecucion Proceso Calculo ISR'
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ERROR_MESSAGE())
-    SELECT @pMsgError
- --   EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+--    SELECT @pMsgError
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
   END CATCH
   EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, 1
-                                                    
+  END                                                    
+  ELSE
+  BEGIN
+    SET  @pError    =  'El periodo se encuentra cerrado ' + @pAnoMes
+    SET  @pMsgError =  LTRIM(@pError + '==> ' + ERROR_MESSAGE())
+--    SELECT @pMsgError
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+  END 
+
 END
