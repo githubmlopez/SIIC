@@ -2,11 +2,11 @@ USE ADMON01
 GO
 
 ALTER FUNCTION fnObtParAlfa
-( @pcve_parametro varchar(10))
+(@pCveEmpresa varchar(4), @pcve_parametro varchar(10))
 RETURNS varchar(30)
 -- WITH EXECUTE AS CALLER
 AS
 BEGIN
-  return (select substring(VALOR_ALFA,1,30) from CI_PARAMETRO where CVE_PARAMETRO = @pcve_parametro)
+  RETURN (SELECT SUBSTRING(VALOR_ALFA,1,30) FROM CI_PARAMETRO WHERE CVE_EMPRESA =  @pCveEmpresa  AND CVE_PARAMETRO = @pcve_parametro)
 END
 

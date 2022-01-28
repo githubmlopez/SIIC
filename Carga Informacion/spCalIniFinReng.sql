@@ -1,4 +1,4 @@
-USE CARGADOR
+USE ADMON01	
 GO
 SET ANSI_NULLS ON
 GO
@@ -6,7 +6,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
-IF  EXISTS( SELECT 1 FROM CARGADOR.sys.procedures WHERE Name =  'spCalIniFinReng')
+IF  EXISTS( SELECT 1 FROM ADMON01.sys.procedures WHERE Name =  'spCalIniFinReng')
 BEGIN
   DROP  PROCEDURE spCalIniFinReng
 END
@@ -15,12 +15,14 @@ GO
 -- BALANZA201804
 CREATE PROCEDURE [dbo].[spCalIniFinReng] 
 (
-@pIdProceso      numeric(9),	
-@pIdTarea        numeric(9),
-@pCodigoUsuario  varchar(20),
 @pIdCliente      int,
 @pCveEmpresa     varchar(4),
-@pPeriodo        varchar(8),
+@pCodigoUsuario  varchar(20),
+@pCveAplicacion  varchar(10),
+@pAnoPeriodo     varchar(8),
+@pIdProceso      numeric(9),
+@pFolioExe       int,
+@pIdTarea        numeric(9),
 @pCveTipoBloque  varchar(4),
 @pNumRengIni     int,
 @pNumRengFin     int,

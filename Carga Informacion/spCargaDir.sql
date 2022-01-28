@@ -1,4 +1,4 @@
-USE [CARGADOR]
+USE [ADMON01]
 GO
 
 -- EXEC spCargaDir 1,1,'MARIO',1,'CU','DOCTOS','C:\TEMP2018\Doctos',' ',' '
@@ -7,7 +7,7 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
-IF  EXISTS( SELECT 1 FROM CARGADOR.sys.procedures WHERE Name =  'spCargaDir')
+IF  EXISTS( SELECT 1 FROM ADMON01.sys.procedures WHERE Name =  'spCargaDir')
 BEGIN
   DROP  PROCEDURE spCargaDir
 END
@@ -15,16 +15,18 @@ GO
 
 CREATE PROCEDURE [dbo].[spCargaDir]
 (
-@pIdProceso       numeric (9),
-@pIdTarea         numeric (9),
-@pCodigoUsuario   varchar (20),
-@pIdCliente       int,
-@pCveEmpresa      varchar (4),
-@pCveAplicacion   varchar (10),
-@pPatCalc         varchar (100),
-@pExtension       varchar (10),
-@pError           varchar (80) OUT,
-@pMsgError        varchar (400) OUT
+@pIdCliente     int,
+@pCveEmpresa    varchar(4),
+@pCodigoUsuario varchar(20),
+@pCveAplicacion varchar(10),
+@pAnoPeriodo    varchar(8),
+@pIdProceso     numeric(9),
+@pFolioExe      int,
+@pIdTarea       numeric(9),
+@pPatCalc       varchar (100),
+@pExtension     varchar (10),
+@pError         varchar (80) OUT,
+@pMsgError      varchar (400) OUT
 )
 
 AS
@@ -44,7 +46,7 @@ BEGIN
   EXEC MASTER..xp_cmdshell   @CMD 
  -- SELECT * FROM #FILEP
 --  Depuración de archivo 
-
+--  SELECT * FROM  #FILEP 
   DELETE 
   FROM   #FILEP 
   WHERE  Rowfile NOT LIKE '[0-9][0-9]/[0-9][0-9]/[0-9][0-9][0-9][0-9] %' 
@@ -55,8 +57,7 @@ BEGIN
 --  SELECT * FROM #FILEP
 
   UPDATE #FILEP SET Rowfile =
-  SUBSTRING(Rowfile,CHARINDEX(' ',REVERSE(Rowfile)) + 1,LEN(Rowfile))
-
+  SUBSTRING(Rowfile, (LEN(Rowfile) - CHARINDEX(' ',REVERSE(Rowfile)) + 1) + 1, LEN(Rowfile))
 --  SELECT * FROM #FILEP
 END
 

@@ -10,7 +10,13 @@ SET NOCOUNT ON
 GO
 -- EXEC spEstatMonitor  'CU', '201804', 'E1VALIDA', 0
 
-ALTER PROCEDURE [dbo].[spEstatMonitor]  (@pCveEmpresa varchar(4), @pAnoMes  varchar(6),  @pCveMonitor varchar(10), @pIdProceso numeric(9,0))
+IF  EXISTS( SELECT 1 FROM ADMON01.sys.procedures WHERE Name =  'spEstatMonitorB')
+BEGIN
+  DROP  PROCEDURE spEstatMonitorB
+END
+GO
+
+CREATE PROCEDURE [dbo].[spEstatMonitorB]  (@pCveEmpresa varchar(4), @pAnoMes  varchar(6),  @pCveMonitor varchar(10), @pIdProceso numeric(9,0))
 AS                                        
 BEGIN
 
@@ -46,50 +52,19 @@ BEGIN
 		   @codigo_usuario   varchar(20),
 		   @num_reg_tran     int
 
-  DECLARE  @utl_fol_tarea    int,
-           @sit_tarea        varchar(2)
+  DECLARE  @utl_fol_proc    int,
+           @sit_proceso     varchar(2)
 
-  IF object_id('tempdb..#ESTMONITOR') IS  NULL 
-  BEGIN
-    CREATE TABLE #ESTMONITOR (
-    RowID           int IDENTITY(1,1) NOT NULL,
-    ID_PROCESO      numeric(9,0),
-    NOM_PROCESO     varchar (100),
-    ID_TAREA        numeric(9,0),
-    F_OPERACION     date,
-    STORE_PROCEDURE varchar(50),
-    HORA_INICIO     varchar(10),
-    HORA_FINAL      varchar(10),
-    CODIGO_USUARIO  varchar(20),
-	NUM_REGISTROS   int,
-    SIT_PROCESO     varchar(2))
-  END
+  IF  EXISTS(SELECT  1 FROM  FC_GEN_PROCESO p
+               WHERE  p.CVE_EMPRESA  =  @pCveEmpresa  AND 
+	                  t.ID_PROCESO   =  @id_proceso   AND
+	   	              t.ANO_MES_PROC =  @pAnoMes) 
+  
 
-  INSERT  @TProcMonitor (CVE_EMPRESA, ID_PROCESO, NOM_PROCESO, STORE_PROCEDURE)
-  SELECT p.CVE_EMPRESA, p.ID_PROCESO,  LTRIM(SUBSTRING(PARAMETRO,1,4) + ' ' + p.NOMBRE_PROCESO), p.STORE_PROCEDURE 
-  FROM CI_MONITOR m, FC_GEN_PROCESO p, FC_MON_PROCESO mp
-  WHERE  m.CVE_EMPRESA    = mp.CVE_EMPRESA      AND
-         m.CVE_MONITOR    = mp.CVE_MONITOR      AND
-	     mp.CVE_EMPRESA   = p.CVE_EMPRESA       AND
-	     mp.ID_PROCESO    = p.ID_PROCESO        AND
-         m.CVE_EMPRESA    = @pCveEmpresa        AND
-		 m.CVE_MONITOR    = @pCveMonitor        AND
-		(@pIdProceso      = @k_todos_proc       OR
-		 mp.ID_PROCESO     = @pIdProceso)  ORDER BY mp.SEQ_EJECUCION 		         
 
---  SELECT * FROM @TProcMonitor
 
-  SET @NunRegistros = @@ROWCOUNT
-  SET @RowCount     = 1
 
-  WHILE @RowCount <= @NunRegistros
-  BEGIN
-    SELECT @cve_empresa =  CVE_EMPRESA, @id_proceso = ID_PROCESO, @nom_proceso  =  NOM_PROCESO, 
-	       @store_procedure = STORE_PROCEDURE
-    FROM   @TProcMonitor
-    WHERE  RowID = @RowCount
-
-    IF  EXISTS(SELECT  1 FROM  FC_GEN_TAREA t
+  IF  EXISTS(SELECT  1 FROM  FC_GEN_TAREA t
                WHERE  t.CVE_EMPRESA  =  @pCveEmpresa  AND 
 	                  t.ID_PROCESO   =  @id_proceso   AND
 	   	              t.ANO_MES_PROC =  @pAnoMes) 
@@ -135,20 +110,4 @@ BEGIN
 	  SET  @sit_tarea  =  @k_no_proc
 	END
       
-    INSERT  #ESTMONITOR (ID_PROCESO, NOM_PROCESO, ID_TAREA, F_OPERACION, STORE_PROCEDURE, HORA_INICIO, HORA_FINAL,
-		                      CODIGO_USUARIO, NUM_REGISTROS, SIT_PROCESO)  VALUES
-           (@id_proceso,
-		    @nom_proceso, 
-		    @id_tarea,
-		    @f_operacion,      
-		    @store_procedure,
-		    @hora_inicio,
-		    @hora_fin,
-		    @codigo_usuario,
-			@num_reg_tran,
-		    @sit_tarea)
-          
-    SET   @RowCount = @RowCount + 1
-  END
-  SELECT * FROM #ESTMONITOR
 END

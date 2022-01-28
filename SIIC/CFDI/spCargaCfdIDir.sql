@@ -13,34 +13,25 @@ BEGIN
 END
 GO
 
---EXEC spCargaCfdiDir'CU','MARIO','201906',143,1,' ',' '
+--exec spCargaCfdiDir 1,'CU','MARIO','SIIC','202002',220,1,1,0,' ',' '
 CREATE PROCEDURE [dbo].[spCargaCfdiDir]
 (
---@pIdProceso       numeric(9),
---@pIdTarea         numeric(9),
---@pCodigoUsuario   varchar(20),
---@pIdCliente       int,
---@pCveEmpresa      varchar(4),
---@pCveAplicacion   varchar(10),
---@pIdFormato       int,
---@pIdBloque        int,
---@pAnoPeriodo      varchar(6),
---@pError           varchar(80) OUT,
---@pMsgError        varchar(400) OUT
---)
-@pCveEmpresa      varchar(4),
-@pCodigoUsuario   varchar(20),
-@pAnoPeriodo      varchar(6),
-@pIdProceso       numeric(9),
-@pIdTarea         numeric(9),
-@pError           varchar(80) OUT,
-@pMsgError        varchar(400) OUT
+@pIdCliente     int,
+@pCveEmpresa    varchar(4),
+@pCodigoUsuario varchar(20),
+@pCveAplicacion varchar(10),
+@pAnoPeriodo    varchar(8),
+@pIdProceso     numeric(9),
+@pFolioExe      int,
+@pIdTarea       numeric(9),
+@pBError        bit OUT,
+@pError         varchar(80) OUT, 
+@pMsgError      varchar(400) OUT
 )
 AS
 BEGIN
 
   DECLARE @pTipoInfo     int,
-          @pIdCliente    int,
           @pIdFormato    int,
           @pIdBloque     int
 
@@ -51,9 +42,11 @@ BEGIN
           @k_activa      varchar(2) = 'A',
 		  @k_error       varchar(1) = 'E',
 		  @k_cve_factura varchar(4) = 'FACT',
-		  @k_cve_CXP     varchar(4) = 'CXP',
+		  @k_cve_cxp     varchar(4) = 'CXP',
+		  @k_cve_pag     varchar(4) = 'PAG',
 		  @k_fmt_factura int        = 10,
-		  @k_fmt_CXP     int        = 20,
+		  @k_fmt_cxp     int        = 20,
+		  @k_fmt_pag     int        = 30,
 		  @k_cerrado     varchar(1) = 'C'
 
   IF  (SELECT SIT_PERIODO FROM CI_PERIODO_CONTA WHERE 
@@ -63,24 +56,36 @@ BEGIN
   BEGIN
 
   SELECT
-  @pIdCliente = CONVERT(INT,SUBSTRING(PARAMETRO,1,6)),
-  @pTipoInfo  = CONVERT(INT,SUBSTRING(PARAMETRO,7,6)),
-  @pIdBloque  = CONVERT(INT,SUBSTRING(PARAMETRO,13,6)),
-  @pIdFormato = CONVERT(INT,SUBSTRING(PARAMETRO,19,6))
-  FROM  FC_GEN_PROCESO WHERE CVE_EMPRESA = @pCveEmpresa AND ID_PROCESO = @pIdProceso
+  @pTipoInfo  = CONVERT(INT,SUBSTRING(PARAMETRO,1,6)),
+  @pIdBloque  = CONVERT(INT,SUBSTRING(PARAMETRO,7,6)),
+  @pIdFormato = CONVERT(INT,SUBSTRING(PARAMETRO,13,6))
+  FROM  FC_PROCESO WHERE CVE_EMPRESA = @pCveEmpresa AND ID_PROCESO = @pIdProceso
+
+  IF  @pIdFormato  =  @k_fmt_factura
+  BEGIN
+    DELETE  FROM  CFDI_XML_CTE_PERIODO  WHERE CVE_TIPO  =  @k_cve_factura  AND  ANO_MES  =  @pAnoPeriodo 
+  END
+  ELSE
+  IF  @pIdFormato  =  @k_fmt_cxp
+  BEGIN
+    DELETE  FROM  CFDI_XML_CTE_PERIODO  WHERE CVE_TIPO  =  @k_cve_cxp  AND  ANO_MES  =  @pAnoPeriodo 
+  END
 
   SELECT @cont_regist =  @@ROWCOUNT
 
   BEGIN TRY
 
-  IF  @pIdFormato  =  @k_fmt_factura
-  BEGIN
-    SET  @cve_tipo  =  	@k_cve_factura
-  END
-  ELSE
-  BEGIN
-    SET  @cve_tipo  =  	@k_cve_CXP
-  END 
+ IF  @pIdFormato  =  @k_fmt_factura
+ BEGIN
+  SET  @cve_tipo  =  @k_cve_factura
+ END
+ ELSE
+ BEGIN
+   IF  @pIdFormato  =  @k_fmt_cxp
+   BEGIN
+     SET  @cve_tipo  =  @k_cve_cxp
+   END
+ END
 
   DELETE CFDI_XML_CTE_PERIODO WHERE CVE_EMPRESA = @pCveEmpresa  AND ANO_MES = @pAnoPeriodo AND CVE_TIPO = @cve_tipo
 
@@ -94,8 +99,7 @@ BEGIN
   )
   SELECT
   @pCveEmpresa, @pAnoPeriodo, @cve_tipo, c.VAL_DATO, ' '
-  FROM CARGADOR.dbo.FC_CARGA_COL_DATO c WHERE
-  ID_CLIENTE       = @pIdCliente  AND
+  FROM FC_CARGA_COL_DATO c WHERE
   CVE_EMPRESA      = @pCveEmpresa AND
   TIPO_INFORMACION = @pTipoInfo   AND
   ID_BLOQUE        = @pIdBloque   AND
@@ -112,22 +116,23 @@ BEGIN
   END TRY
 
   BEGIN CATCH
-    SET  @pError    =  'Error Carga de CFDI ' + @cve_tipo
-    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
-    SELECT @pMsgError
---    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+    SET  @pError    =  '(E) Carga de CFDI ' + @cve_tipo
+    SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	SET  @pBError  =  @k_verdadero
   END CATCH
 
-  EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @cont_regist
+--  EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @cont_regist
 
   END
   ELSE
   BEGIN
-    SET  @pError    =  'El Periodo esta cerrado '
-    SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
-    SELECT @pMsgError
---    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+    SET  @pError    =  '(E) El Periodo esta cerrado '
+    SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	SET  @pBError  =  @k_verdadero
   END
 
 END
 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       

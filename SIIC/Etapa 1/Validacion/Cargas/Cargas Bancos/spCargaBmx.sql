@@ -13,23 +13,26 @@ BEGIN
 END
 GO
 
---EXEC spCargaBmx 'CU','MARIO','201906',135,1,' ',' '
+--EXEC spCargaBmx 1,'EGG','MARIO','SIIC','202011',18,1,1,0,' ',' '
 CREATE PROCEDURE [dbo].[spCargaBmx]
 (
-@pCveEmpresa      varchar(4),
-@pCodigoUsuario   varchar(20),
-@pAnoPeriodo      varchar(6),
-@pIdProceso       numeric(9),
-@pIdTarea         numeric(9),
-@pError           varchar(80) OUT,
-@pMsgError        varchar(400) OUT
+@pIdCliente     int,
+@pCveEmpresa    varchar(4),
+@pCodigoUsuario varchar(20),
+@pCveAplicacion varchar(10),
+@pAnoPeriodo    varchar(8),
+@pIdProceso     numeric(9),
+@pFolioExe      int,
+@pIdTarea       numeric(9),
+@pBError        bit OUT,
+@pError         varchar(80) OUT, 
+@pMsgError      varchar(400) OUT
 )
 AS
 BEGIN
-  DECLARE @pIdCliente    int,
-          @pIdFormato    int,
-		  @pTipoInfo     int,
-          @pIdBloque     int
+  DECLARE @pTipoInfo     int,
+          @pIdBloque     int,
+		  @pIdFormato    int
 
   DECLARE @f_operacion        date,
           @cve_cargo_abono    varchar (1),
@@ -37,6 +40,7 @@ BEGIN
           @cve_tipo_movto     varchar (6),
           @descripcion        varchar(250), 
 	      @referencia         varchar(20),
+		  @ref_emp            varchar(14),
           @sit_concilia_banco varchar(2),
           @sit_movto          varchar(2),
 		  @b_default          bit
@@ -53,36 +57,30 @@ BEGIN
 		  @pos_ini       int,
 		  @pos_fin       int,
 		  @cve_chequera  varchar(6),
+		  @cheq_param    varchar(6),
 		  @sdo_final     numeric(16,2)
 
-  DECLARE @k_verdadero   bit        = 1,
-          @k_falso       bit        = 0,
-		  @k_error       varchar(1) = 'E',
-		  @k_cerrado     varchar(1) = 'C',
-		  @k_no_conc     varchar(2) = 'NC',
-		  @k_activa      varchar(1) = 'A',
-		  @k_cargo       varchar(1) = 'C',
-		  @k_abono       varchar(1) = 'A',
-		  @k_inicio      varchar(1) = 'I',
- 		  @k_fin         varchar(1) = 'F',
-		  @k_pos_ini     varchar(10) = 'POSINI',
-		  @k_pos_fin     varchar(10) = 'POSFIN',
+  DECLARE @k_verdadero   bit         = 1,
+          @k_falso       bit         = 0,
+		  @k_error       varchar(1)  = 'E',
+		  @k_cerrado     varchar(1)  = 'C',
+		  @k_no_conc     varchar(2)  = 'NC',
+		  @k_activa      varchar(1)  = 'A',
+		  @k_cargo       varchar(1)  = 'C',
+		  @k_abono       varchar(1)  = 'A',
+		  @k_inicio      varchar(1)  = 'I',
+ 		  @k_fin         varchar(1)  = 'F',
 		  @k_mov_banc    varchar(4)  = 'MOVB',
 		  @k_sec_sdo_ini int         = 1,
 		  @k_referencia  varchar(13) = 'Autorización:',
+		  @k_ref_emp     varchar(4)  = 'Ref/',
 		  @k_f_ddmmyyyy  int         = 103,
 		  @k_default     varchar(1)  = 'D'
 
   IF  (SELECT SIT_PERIODO FROM CI_PERIODO_CONTA WHERE 
        CVE_EMPRESA = @pCveEmpresa   AND
-	   ANO_MES     = @pAnoPeriodo)  <>  @k_cerrado OR
-	  (SELECT COUNT(*) FROM CI_MOVTO_BANCARIO m, CI_CONCILIA_C_X_C c
-	   WHERE m.ANO_MES = @pAnoPeriodo  AND m.ID_MOVTO_BANCARIO = c.ID_MOVTO_BANCARIO) > 1 OR
-	  (SELECT COUNT(*) FROM CI_MOVTO_BANCARIO m, CI_CONCILIA_C_X_P c
-	   WHERE m.ANO_MES = @pAnoPeriodo  AND m.ID_MOVTO_BANCARIO = c.ID_MOVTO_BANCARIO) > 1 
+	   ANO_MES     = @pAnoPeriodo)  <>  @k_cerrado   
   BEGIN
-
-    DELETE CI_BMX_ACUM_REF  WHERE ANO_MES = @pAnoPeriodo 
  
     DECLARE @TvpBanamex TABLE
    (
@@ -90,45 +88,51 @@ BEGIN
     CVE_CHEQUERA       varchar (6)    NOT NULL
    )
 
-    EXEC  spParamCarga
-    @pAnoPeriodo, @pCveEmpresa, @pIdProceso, @pIdCliente OUT, 
-	@pTipoInfo OUT, @pIdBloque OUT, @pIdFormato OUT, @cve_chequera OUT
+	SELECT @cheq_param  = SUBSTRING(PARAMETRO,1,6)
+    FROM   FC_PROCESO 
+	WHERE  CVE_EMPRESA =  @pCveEmpresa  AND ID_PROCESO = @pIdProceso
 
+
+ --   EXEC  spParamCarga
+ --   @pAnoPeriodo, @pCveEmpresa, @pIdProceso, 
+	--@pTipoInfo OUT, @pIdBloque OUT, @pIdFormato OUT, @cve_chequera OUT, @k_verdadero
 -----------------------------------------------------------------------------------------------------
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
 -----------------------------------------------------------------------------------------------------
-
     INSERT INTO @TvpBanamex 
    (
     CVE_CHEQUERA
    )
     SELECT  CVE_CHEQUERA
     FROM CI_CHEQUERA ch WHERE
-    CONVERT(INT,SUBSTRING(PARAM_INFORMACION,1,6))  = @pTipoInfo
+    CVE_CHEQUERA  =  @cheq_param
+
     SET @NunRegistros = @@ROWCOUNT
+--	SELECT * FROM @TvpBanamex
 -----------------------------------------------------------------------------------------------------
     SET @RowCount     = 1
-
     WHILE @RowCount <= @NunRegistros
     BEGIN
       BEGIN TRY
 	  SELECT @cve_chequera = CVE_CHEQUERA  FROM @TvpBanamex  WHERE NUM_REGISTRO = @RowCount
 
-      DELETE FROM CI_MOVTO_BANCARIO WHERE ANO_MES = @pAnoPeriodo AND CVE_CHEQUERA = @cve_chequera
+      DELETE CI_BMX_ACUM_REF  WHERE CVE_EMPRESA = @pCveEmpresa  AND ANO_MES = @pAnoPeriodo AND ANO_MES = @cve_chequera
+
+--	  SELECT 'PROCESANDO CHEQUERA ' + @cve_chequera
 
 	  SELECT @pTipoInfo  = CONVERT(INT,SUBSTRING(PARAM_INFORMACION,1,6)),
 	         @pIdBloque  = CONVERT(INT,SUBSTRING(PARAM_INFORMACION,7,6)),
 			 @pIdFormato = CONVERT(INT,SUBSTRING(PARAM_INFORMACION,13,6))
-	  FROM CI_CHEQUERA 
+	  FROM   CI_CHEQUERA 
 	  WHERE  CVE_CHEQUERA =  @cve_chequera
 
-	  SET  @pos_ini  =  CONVERT(INT,(ISNULL(dbo.fnObtParNumero(@cve_chequera + @k_inicio),0)))
-	  SET  @pos_fin  =  CONVERT(INT,(ISNULL(dbo.fnObtParNumero(@cve_chequera + @k_fin),0)))
+	  SET  @pos_ini  =  CONVERT(INT,(ISNULL(dbo.fnObtParNumero(@pCveEmpresa, @cve_chequera + @k_inicio),0)))
+	  SET  @pos_fin  =  CONVERT(INT,(ISNULL(dbo.fnObtParNumero(@pCveEmpresa, @cve_chequera + @k_fin),0)))
 
-	  UPDATE CI_CHEQUERA_PERIODO  SET  SDO_FIN_MES = 0 WHERE ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera
+	  UPDATE CI_CHEQUERA_PERIODO  SET  SDO_FIN_MES = 0 WHERE
+	  CVE_EMPRESA =  @pCveEmpresa  AND  ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera
 
-	  SELECT @NunRegistros1 = MAX(NUM_REGISTRO) FROM CARGADOR.dbo.FC_CARGA_COL_DATO WHERE
-      ID_CLIENTE       = @pIdCliente  AND
+	  SELECT @NunRegistros1 = MAX(NUM_REGISTRO) FROM FC_CARGA_COL_DATO WHERE
       CVE_EMPRESA      = @pCveEmpresa AND
       TIPO_INFORMACION = @pTipoInfo   AND
       ID_BLOQUE        = @pIdBloque   AND
@@ -141,14 +145,17 @@ BEGIN
 
 	  WHILE  @RowCount1  <=  @NunRegistros1 
       BEGIN
-        SET @f_operacion  =
-        dbo.fnobtObtValDate (@pIdCliente, @pCveEmpresa, @pTipoInfo, @pIdBloque, @pIdFormato, @pAnoPeriodo, @RowCount1, 1, 1, 12, @k_f_ddmmyyyy) 
 
         SET @descripcion =  
-        dbo.fnobtObtColumna (@pIdCliente, @pCveEmpresa, @pTipoInfo, @pIdBloque, @pIdFormato, @pAnoPeriodo, @RowCount1, 2, 1, 250)  
+        dbo.fnObtColumna (@pIdCliente, @pCveEmpresa, @pTipoInfo, @pIdBloque, @pIdFormato, @pAnoPeriodo, @RowCount1, 2, 1, 250)  
+
+		IF  NOT EXISTS (SELECT 1 FROM CI_MOVTO_BANCARIO WHERE ANO_MES = @pAnoPeriodo  AND DESCRIPCION = @descripcion)
+		BEGIN --1
+        SET @f_operacion  =
+        dbo.fnObtValDate (@pIdCliente, @pCveEmpresa, @pTipoInfo, @pIdBloque, @pIdFormato, @pAnoPeriodo, @RowCount1, 1, 1, 12, @k_f_ddmmyyyy) 
 
         SET @val_dato_c =  
-        dbo.fnobtObtColumna (@pIdCliente, @pCveEmpresa, @pTipoInfo, @pIdBloque, @pIdFormato, @pAnoPeriodo, @RowCount1, 3, 1, 250)  
+        dbo.fnObtColumna (@pIdCliente, @pCveEmpresa, @pTipoInfo, @pIdBloque, @pIdFormato, @pAnoPeriodo, @RowCount1, 3, 1, 250)  
 
 		IF  @val_dato_c <> ' ' 
 		BEGIN
@@ -158,13 +165,16 @@ BEGIN
 		ELSE
 		BEGIN
           SET @val_dato_c =  
-          dbo.fnobtObtColumna (@pIdCliente, @pCveEmpresa, @pTipoInfo, @pIdBloque, @pIdFormato, @pAnoPeriodo, @RowCount1, 4, 1, 250)  
-          SET  @val_dato_n = CONVERT(numeric(16,2),REPLACE((RTRIM(SUBSTRING(@val_dato_c,1,18))),' ',0)) * -1
+          dbo.fnObtColumna (@pIdCliente, @pCveEmpresa, @pTipoInfo, @pIdBloque, @pIdFormato, @pAnoPeriodo, @RowCount1, 4, 1, 250)  
+          SET  @val_dato_n = CONVERT(numeric(16,2),REPLACE((RTRIM(SUBSTRING(@val_dato_c,1,18))),' ',0)) -- * -1
           SET  @cve_cargo_abono    =  @k_cargo
         END
 
         SET  @imp_transaccion    =  @val_dato_n
-        SET  @cve_operacion  = 
+
+ -- Obtiene Clave de Operacion
+        		
+		SET  @cve_operacion  = 
 	    SUBSTRING(dbo.fnObtOperBanc(@pTipoInfo, @pos_ini,@pos_fin,@cve_cargo_abono, @descripcion),2,6)
 		IF  SUBSTRING(dbo.fnObtOperBanc(@pTipoInfo, @pos_ini,@pos_fin,@cve_cargo_abono, @descripcion),1,1) = @k_default
 		BEGIN
@@ -174,77 +184,110 @@ BEGIN
 		BEGIN
           SET @b_default  =  @k_falso
 		END
- 
+ --       SELECT 'CLAVE ' + @cve_operacion
         SET  @cve_tipo_movto     =  @cve_operacion
-  
-		IF NOT EXISTS (SELECT 1 FROM CI_TIPO_MOVIMIENTO WHERE CVE_TIPO_MOVTO = @cve_tipo_movto)
-		BEGIN
-          SET  @pError    =  'N.E. Oper '  +  ISNULL(SUBSTRING(@descripcion,1,50),'NULO') + ' ' + ISNULL(ERROR_PROCEDURE(), ' ')
-          SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
---          SELECT @pMsgError
-          EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
-          SET @RowCount1  =  @NunRegistros1 
- 		END
-
+ 
  -- Obtiene Referencia solo para el caso de BANAMEX
-        SET @referencia =  SUBSTRING(dbo.fnobExtCadena (@descripcion, @k_referencia, 1, 8),1,8)
+        IF  ISNULL(CHARINDEX(@k_referencia,@descripcion),0) > 0
+		BEGIN
+          SET @referencia = SUBSTRING(dbo.fnobtExtCadena (@descripcion, @k_referencia, 1, 8),1,8)
+		  SET @referencia = ISNULL(@referencia, ' ')
+		END
+		ELSE
+		BEGIN
+		  SET  @referencia  =  ' '
+		END 
+ -- Obtiene Referencia solicitada por la empresa
 
-		SET @referencia = ISNULL(@referencia, ' ')
+       IF  ISNULL(CHARINDEX(@k_ref_emp,@descripcion),0) > 0
+	   BEGIN
+		 SET @ref_emp = SUBSTRING(dbo.fnobtExtCadena (@descripcion, @k_ref_emp, 1,9),1,9)
+		 SET @ref_emp = ISNULL(@ref_emp, ' ')
+       END
+	   ELSE
+	   BEGIN
+		 SET  @ref_emp  =  ' ' 
+	   END 
 
-		SET @folio = (select  NUM_FOLIO + 1 FROM  CI_FOLIO  WHERE CVE_FOLIO  =  @k_mov_banc)
-	    UPDATE CI_FOLIO SET NUM_FOLIO = @folio  WHERE CVE_FOLIO  =  @k_mov_banc
+	   IF EXISTS (SELECT 1 FROM CI_TIPO_MOVTO_BANCO WHERE CVE_EMPRESA = @pCveEmpresa AND CVE_TIPO_MOVTO = @cve_tipo_movto)
+	   BEGIN
 
-        INSERT INTO CI_MOVTO_BANCARIO 
-       (
-        ANO_MES,
-        CVE_CHEQUERA,
-        ID_MOVTO_BANCARIO,
-        F_OPERACION,
-        CVE_CARGO_ABONO,
-        IMP_TRANSACCION,
-        CVE_TIPO_MOVTO,
-        DESCRIPCION,
-		REFERENCIA,
-        SIT_CONCILIA_BANCO,
-        SIT_MOVTO,
-		B_OPER_DEFAULT
-       )  VALUES
-	   (
-	    @pAnoPeriodo,
-        @cve_chequera,
-	    @folio,
-        @f_operacion,
-		@cve_cargo_abono,
-		@imp_transaccion,
-		@cve_operacion,
-		@descripcion,
-		@referencia,
-		@k_no_conc,
-        @k_activa,
-		@b_default
-	   )  
-		SELECT @RowCount1  =  @RowCount1  +  1 
-      END
+          SET @folio = (select  NUM_FOLIO + 1 FROM  CI_FOLIO  WHERE CVE_FOLIO  =  @k_mov_banc)
+	      UPDATE CI_FOLIO SET NUM_FOLIO = @folio  WHERE CVE_FOLIO  =  @k_mov_banc
 
+          INSERT INTO CI_MOVTO_BANCARIO 
+         (
+          ID_MOVTO_BANCARIO,
+          CVE_EMPRESA,
+          ANO_MES,
+          F_OPERACION,
+          CVE_CHEQUERA,
+          CVE_CARGO_ABONO,
+          IMP_TRANSACCION,
+          CVE_TIPO_MOVTO,
+          DESCRIPCION,
+          SIT_CONCILIA_BANCO,
+          SIT_MOVTO,
+		  B_OPER_DEFAULT,
+		  REFERENCIA,
+		  REF_EMP,
+		  B_REFERENCIA
+         )  VALUES
+	     (
+	      @folio,
+          @pCveEmpresa,
+	      @pAnoPeriodo,
+          @f_operacion,
+          @cve_chequera,
+		  @cve_cargo_abono,
+		  @imp_transaccion,
+		  @cve_operacion,
+		  @descripcion,
+		  @k_no_conc,
+          @k_activa,
+		  @b_default,
+		  @referencia,
+		  @ref_emp,
+		  @k_falso
+	     )  
+ 		END
+		ELSE
+		BEGIN
+          SET  @pBError    =  @k_verdadero
+          SET  @pError    =  '(E) No Existe Operacion '  +  ISNULL(SUBSTRING(@descripcion,1,50),'NULO') 
+          SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+          EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+          SET @RowCount1  =  @NunRegistros1 
+		END 
+
+        END  --1
+
+        SELECT @RowCount1  =  @RowCount1  +  1 
+
+	  END
       END TRY 
 
 	  BEGIN CATCH
-        SET  @pError    =  'Error carga Banamex (1) '  +  ISNULL(@cve_chequera,'NULO') + ' ' + ISNULL(ERROR_PROCEDURE(), ' ') 
-        SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
-        SELECT @pMsgError
---        EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+        SET  @pBError    =  @k_verdadero
+        SET  @pError    =  '(E) Carga Banamex (1) '  +  ISNULL(@cve_chequera,'NULO') + ' ' + ISNULL(ERROR_PROCEDURE(), ' ') 
+        SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+        EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
       END CATCH
 
       BEGIN TRY
 
+      IF  @pBError    =  @k_falso
+	  BEGIN
 	  INSERT  CI_BMX_ACUM_REF
      (
+	  CVE_EMPRESA,
 	  ANO_MES,
 	  CVE_CHEQUERA,
 	  REFERENCIA,
 	  IMP_TRANSACCION
 	 )
       SELECT 
+	  @pCveEmpresa,
 	  @pAnoPeriodo,
 	  CVE_CHEQUERA,
 	  REFERENCIA,
@@ -256,41 +299,60 @@ BEGIN
       UPDATE CI_MOVTO_BANCARIO  SET IMP_TRANSACCION =  ABS(IMP_TRANSACCION) WHERE
 	  ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera
 
+	  UPDATE m1 SET B_REFERENCIA =  @k_verdadero FROM CI_MOVTO_BANCARIO m1  WHERE
+	  ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera AND ISNULL(REFERENCIA, ' ') <> ' '  AND
+	  (SELECT COUNT(*) FROM CI_MOVTO_BANCARIO m2  WHERE
+	   ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera AND m1.REFERENCIA = m2.REFERENCIA) > 1
+	 
       UPDATE CI_BMX_ACUM_REF   SET IMP_TRANSACCION =  ABS(IMP_TRANSACCION) WHERE
-	  ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera
+	  CVE_EMPRESA = @pCveEmpresa  AND  ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera
  
       DELETE  CI_MOVTO_BANCARIO WHERE ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera  AND IMP_TRANSACCION = 0 
 	   
 --      SELECT * from CI_MOVTO_BANCARIO  WHERE  ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera
 
+      END
       END TRY
  
       BEGIN CATCH
-        SET  @pError    =  'Error carga Banamex (2) '  +  ISNULL(@cve_chequera,'NULO') + ISNULL(ERROR_PROCEDURE(), ' ') 
-        SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
---        SELECT @pMsgError
-        EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+        SET  @pBError    =  @k_verdadero
+        SET  @pError    =  '(E) Carga Banamex (2) '  +  ISNULL(@cve_chequera,'NULO')  
+        SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+        SELECT @pMsgError
+        EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
 	  END CATCH
 
- 	  SET  @val_dato_c =  dbo.fnobtObtColInd (@pIdCliente, @pCveEmpresa,  @pTipoInfo, @pIdFormato, 1, @pAnoPeriodo, 1)   
-
-      SET  @sdo_final = CONVERT(numeric(16,2),REPLACE((RTRIM(SUBSTRING(@val_dato_c,1,18))),' ',0)) 
-
-      UPDATE  CI_CHEQUERA_PERIODO  SET SDO_FIN_MES = @sdo_final WHERE
-	  ANO_MES       =  @pAnoPeriodo  AND
-	  CVE_CHEQUERA  =  @cve_chequera
-
+      IF  @pBError    =  @k_falso
+	  BEGIN
+ 	    SET  @val_dato_c =  dbo.fnObtColInd (@pIdCliente, @pCveEmpresa,  @pTipoInfo, @pIdFormato, @pAnoPeriodo, 1)   
+        SET  @sdo_final = CONVERT(numeric(16,2),REPLACE((RTRIM(SUBSTRING(@val_dato_c,1,18))),' ',0)) 
+        IF   @sdo_final  IS NULL 
+	    BEGIN
+          SET  @pBError    =  @k_verdadero
+          SET  @pError    =  '(E) No existe saldo final '  +  ISNULL(@cve_chequera,'NULO')  
+          SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+          SELECT @pMsgError
+          EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+		  SET @RowCount  =  @NunRegistros 
+	    END
+	    ELSE
+	    BEGIN
+          UPDATE  CI_CHEQUERA_PERIODO  SET SDO_FIN_MES = @sdo_final WHERE
+	      ANO_MES       =  @pAnoPeriodo  AND
+	      CVE_CHEQUERA  =  @cve_chequera
+	    END
+	  END
       SELECT @RowCount  =  @RowCount  +  1 
 
     END
-    EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @NunRegistros
+--    EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @NunRegistros
   END
   ELSE
   BEGIN
-    SET  @pError    =  'El Periodo esta cerrado o conciliados ' + ISNULL(ERROR_PROCEDURE(), ' ') 
+    SET  @pBError    =  @k_verdadero
+    SET  @pError    =  '(E) Periodo esta cerrado  ' 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
-    SELECT @pMsgError
-    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
   END
 END
 

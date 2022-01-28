@@ -1,4 +1,4 @@
-USE CARGADOR
+USE ADMON01
 GO
 SET ANSI_NULLS ON
 GO
@@ -6,7 +6,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
-IF  EXISTS( SELECT 1 FROM CARGADOR.sys.procedures WHERE Name =  'spCargaBloqCsvTxt')
+IF  EXISTS( SELECT 1 FROM ADMON01.sys.procedures WHERE Name =  'spCargaBloqCsvTxt')
 BEGIN
   DROP  PROCEDURE spCargaBloqCsvTxt
 END
@@ -14,11 +14,14 @@ GO
 -- exec spCargaBloqCsv 1,1,'MARIO', 1, 'CU',1,'201804', ' ', ' '
 CREATE PROCEDURE [dbo].[spCargaBloqCsvTxt] 
 (
-@pIdProceso      numeric(9),	
-@pIdTarea        numeric(9),
-@pCodigoUsuario  varchar(20),
-@pIdCliente      int,
-@pCveEmpresa     varchar(4),
+@pIdCliente     int,
+@pCveEmpresa    varchar(4),
+@pCodigoUsuario varchar(20),
+@pCveAplicacion varchar(10),
+@pAnoPeriodo    varchar(8),
+@pIdProceso     numeric(9),
+@pFolioExe      int,
+@pIdTarea       numeric(9),
 @pTipoInfo       int,
 @pIdBloque       int,
 @pIdFormato      int,
@@ -91,7 +94,6 @@ BEGIN
 --	  SELECT 'CICLO COL ' + CONVERT(VARCHAR(10), @num_columna )
       SELECT @tipo_campo = CVE_TIPO_CAMPO, @pos_ini = POS_INICIAL, @pos_fin = POS_FINAL
 	  FROM  FC_CARGA_POSIC  WHERE 
-	  ID_CLIENTE        = @pIdCliente  AND
       CVE_EMPRESA       = @pCveEmpresa AND
       TIPO_INFORMACION  = @pTipoInfo   AND
       ID_BLOQUE         = @pIdBloque   AND
@@ -100,12 +102,15 @@ BEGIN
       IF  @pCveTipoArchivo  =  @k_csv OR  @pCveTipoArchivo  = @k_directorio OR
 	     (@pCveTipoArchivo  =  @k_txt AND @pBSeparador = @k_verdadero)
 	  BEGIN
-        EXEC spObtCampoSep
-             @pIdProceso,
-             @pIdTarea,
-             @pCodigoUsuario,
+        EXEC spObtCampoSepB
              @pIdCliente,
              @pCveEmpresa,
+             @pCodigoUsuario,
+             @pCveAplicacion,
+             @pAnoPeriodo,
+             @pIdProceso,
+             @pFolioExe,
+             @pIdTarea,
              @row_file,
              @tipo_campo,
 			 @pCarSeparador, 
@@ -119,12 +124,15 @@ BEGIN
       END
 	  ELSE
 	  BEGIN
-        EXEC spObtCampoTxt
-             @pIdProceso,
-             @pIdTarea,
-             @pCodigoUsuario,
+        EXEC spObtCampoTxtB
              @pIdCliente,
              @pCveEmpresa,
+             @pCodigoUsuario,
+             @pCveAplicacion,
+             @pAnoPeriodo,
+             @pIdProceso,
+             @pFolioExe,
+             @pIdTarea,
              @row_file,
              @tipo_campo,
 			 @pos_ini,
@@ -137,7 +145,6 @@ BEGIN
 
       INSERT  INTO FC_CARGA_COL_DATO
 	  (
-	  ID_CLIENTE,
 	  CVE_EMPRESA,
 	  TIPO_INFORMACION,
 	  ID_BLOQUE,
@@ -149,7 +156,6 @@ BEGIN
 	  ) 
 	  VALUES
 	  (
-	  @pIdCliente,
 	  @pCveEmpresa,
 	  @pTipoInfo,
 	  @pIdBloque,

@@ -25,7 +25,7 @@ Left(@@Version, Charindex('-', @@version) - 2) As VersionName
 
 SET  @fecha = CONVERT(VARCHAR,GETDATE(), 112)
 
-SET @disk  =  'C:\RESPALDOSBDMLP\' + RTRIM(@pBase) + RTRIM(SUBSTRING(@fecha,1,10)) + '.' + 'BAK' 
+SET @disk  =  'C:\RESPALDOS\' + RTRIM(@pBase) + RTRIM(SUBSTRING(@fecha,1,10)) + '.' + 'BAK' 
 SET @name  =  RTRIM(@pBase) + '-Full Database Backup'
 
 BACKUP DATABASE [ADMON01] TO  DISK = @disk

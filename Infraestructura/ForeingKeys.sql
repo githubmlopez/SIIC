@@ -1,0 +1,4 @@
+USE ADMON01
+GO
+
+EXEC sp_fkeys 'CI_PROVEEDOR'

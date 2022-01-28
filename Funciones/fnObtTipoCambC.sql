@@ -1,10 +1,19 @@
 USE ADMON01
 GO
 
-ALTER FUNCTION fnObtTipoCambC 
+IF  EXISTS( SELECT 1 FROM ADMON01.sys.objects 
+WHERE   type IN (N'FN') AND Name =  'fnObtTipoCambC')
+BEGIN
+  DROP  FUNCTION fnObtTipoCambC
+END
+GO
+
+CREATE FUNCTION fnObtTipoCambC 
 (@pCveEmpresa varchar(4),
  @pAnoMes     varchar(6),
- @pFOperacion date)
+ @pFOperacion date,
+ @pCveMoneda  varchar(1)
+)
 RETURNS numeric(8,4)
 -- WITH EXECUTE AS CALLER
 AS
@@ -26,24 +35,26 @@ BEGIN
 
   IF @cve_valua =  @k_val_cierre
   BEGIN
-    SELECT @tipo_cambio = TIPO_CAM_F_MES FROM CI_PERIODO_CONTA WHERE 
+    SELECT @tipo_cambio =  TIPO_CAMB_F_MES FROM CI_PER_TIPO_CAMB WHERE 
 	       CVE_EMPRESA  =  @pCveEmpresa  AND
-		   ANO_MES      =  @ano_mes_ant 
+		   ANO_MES      =  @ano_mes_ant  AND
+		   CVE_MONEDA   =  @pCveMoneda
   END
   ELSE
   BEGIN
     IF @cve_valua =  @k_val_prom
     BEGIN
-      SELECT @tipo_cambio = TIPO_CAMB_PROM FROM CI_PERIODO_CONTA WHERE 
+      SELECT @tipo_cambio = TIPO_CAMB_PROM FROM CI_PER_TIPO_CAMB WHERE 
 	       CVE_EMPRESA  =  @pCveEmpresa  AND
-		   ANO_MES      =  @ano_mes_ant 
+		   ANO_MES      =  @ano_mes_ant  AND
+		   CVE_MONEDA   =  @pCveMoneda
     END
     ELSE
 	BEGIN
       IF @cve_valua =  @k_val_oper
       BEGIN
         SELECT @tipo_cambio =  TIPO_CAMBIO FROM CI_TIPO_CAMBIO
-		WHERE F_OPERACION = @pFOperacion
+		WHERE CVE_EMPRESA = @pCveEmpresa  AND  CVE_MONEDA = @pCveMoneda AND F_OPERACION = @pFOperacion
       END
       ELSE
 	  BEGIN

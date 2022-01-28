@@ -6,18 +6,27 @@ f.CVE_EMPRESA as 'Empresa', F.SERIE as 'Serie', f.ID_CXC as 'Id. CXC',
 i.ID_ITEM 'Id. Item', f.F_OPERACION as 'F. Operacion',
 c.ID_CLIENTE as 'Id. Cliente', i.CVE_VENDEDOR1 'Vemdedor 1', i.CVE_VENDEDOR2 'Vemdedor 2',
 c.NOM_CLIENTE as 'Nombre', s.DESC_SUBPRODUCTO as 'Producto', 
-f.CVE_F_MONEDA as 'Moneda', f.IMP_F_BRUTO as 'Imp. Bruto', i.IMP_BRUTO_ITEM as 'Imp. B. Item',
-f.TIPO_CAMBIO_LIQ,
-CASE
-WHEN  CVE_F_MONEDA = 'P' THEN
-dbo.fnCalculaDolares(f.F_OPERACION,i.IMP_BRUTO_ITEM,f.CVE_F_MONEDA)
-WHEN  CVE_F_MONEDA = 'D' THEN
-i.IMP_BRUTO_ITEM
+f.CVE_F_MONEDA as 'Moneda Fact', f.IMP_F_BRUTO as 'Imp. Tot.Fact', i.IMP_BRUTO_ITEM as 'Imp. B. Item',
+dbo.fnCalMonLiq(f.ID_CONCILIA_CXC) AS 'Mon. Liquida',
+i.F_INICIO AS 'F. Inicio', i.F_FIN AS 'F. Final',
+CASE 
+WHEN dbo.fnCalMonLiq(f.ID_CONCILIA_CXC) = 'P' AND f.CVE_F_MONEDA = 'P'
+THEN dbo.fnObtTipoCamb(f.F_OPERACION)
+WHEN dbo.fnCalMonLiq(f.ID_CONCILIA_CXC) = 'Pend' AND f.CVE_F_MONEDA = 'P'
+THEN dbo.fnObtTipoCamb(f.F_OPERACION)
 ELSE 0
-END as 'USD',
-f.CVE_R_MONEDA,
-dbo.fnAcumMovtosSql(f.ID_CONCILIA_CXC) AS 'Pagado Fact. USD', 
-dbo.fnAcumMovtosSql(f.ID_CONCILIA_CXC)  * (i.IMP_BRUTO_ITEM / f.IMP_F_BRUTO) AS 'Pagado Item USD'
+END AS 'Tipo Cambio',
+CASE
+WHEN dbo.fnCalMonLiq(f.ID_CONCILIA_CXC) = 'Pend' AND f.CVE_F_MONEDA = 'P'
+THEN i.IMP_BRUTO_ITEM / dbo.fnObtTipoCamb(f.F_OPERACION)
+WHEN dbo.fnCalMonLiq(f.ID_CONCILIA_CXC) = 'Pend' AND f.CVE_F_MONEDA = 'D'
+THEN i.IMP_BRUTO_ITEM 
+WHEN dbo.fnCalMonLiq(f.ID_CONCILIA_CXC) = 'D' AND f.CVE_F_MONEDA = 'P'
+THEN i.IMP_BRUTO_ITEM 
+WHEN dbo.fnCalMonLiq(f.ID_CONCILIA_CXC) = 'P' AND f.CVE_F_MONEDA = 'P'
+THEN i.IMP_BRUTO_ITEM / dbo.fnObtTipoCamb(f.F_OPERACION)
+ELSE
+dbo.fnAcumMovtosSql(f.ID_CONCILIA_CXC)  * (i.IMP_BRUTO_ITEM / f.IMP_F_BRUTO) END AS 'Pagado Item USD'
 FROM CI_FACTURA f, CI_ITEM_C_X_C i, CI_VENTA v, CI_CLIENTE c, CI_SUBPRODUCTO s, CI_PRODUCTO p 
 WHERE 
 f.CVE_EMPRESA = i.CVE_EMPRESA         and

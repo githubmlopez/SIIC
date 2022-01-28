@@ -1,4 +1,4 @@
-USE CARGADOR
+USE ADMON01
 GO
 SET ANSI_NULLS ON
 GO
@@ -6,27 +6,29 @@ SET QUOTED_IDENTIFIER ON
 GO
 SET NOCOUNT ON
 GO
-IF  EXISTS( SELECT 1 FROM CARGADOR.sys.procedures WHERE Name =  'spCargaFile')
+IF  EXISTS( SELECT 1 FROM ADMON01.sys.procedures WHERE Name =  'spCargaFile')
 BEGIN
   DROP  PROCEDURE spCargaFile
 END
 GO
--- exec spCargaFile 15,1,'MARIO',1,'CU','CARGAINF','201906',' ',' '
+-- exec spCargaFile 1,'CU','MARIO','SIIC','202010',1,1,1,0,' ',' '
 CREATE PROCEDURE [dbo].[spCargaFile] 
 (
-@pIdProceso     numeric(9),	
-@pIdTarea       numeric(9),
-@pCodigoUsuario varchar(20),
 @pIdCliente     int,
 @pCveEmpresa    varchar(4),
+@pCodigoUsuario varchar(20),
 @pCveAplicacion varchar(10),
-@pPeriodo       varchar(8), 
-@pError         varchar(80) OUT,
+@pAnoPeriodo    varchar(8),
+@pIdProceso     numeric(9),
+@pFolioExe      int,
+@pIdTarea       numeric(9),
+@pBError        bit OUT,
+@pError         varchar(80) OUT, 
 @pMsgError      varchar(400) OUT
 )
-
 AS
 BEGIN
+
   DECLARE
   @tipo_info       int,
   @id_formato      int,
@@ -90,20 +92,19 @@ BEGIN
   @tipo_info  = CONVERT(INT,SUBSTRING(PARAMETRO,1,6)),
   @id_bloque  = CONVERT(INT,SUBSTRING(PARAMETRO,7,6)),
   @id_formato = CONVERT(INT,SUBSTRING(PARAMETRO,13,6))
-  FROM FC_GEN_PROCESO  WHERE
-  ID_CLIENTE     = @pIdCliente     AND
+  FROM FC_PROCESO  WHERE
   CVE_EMPRESA    = @pCveEmpresa    AND
-  CVE_APLICACION = @pCveAplicacion AND
   ID_PROCESO     = @pIdProceso
-
-  EXEC spVerArchCarga 
-  @pIdProceso,	
-  @pIdTarea,
-  @pCodigoUsuario,
+  BEGIN TRY
+  EXEC spVerArchCarga
   @pIdCliente,
   @pCveEmpresa,
+  @pCodigoUsuario,
   @pCveAplicacion,
-  @pPeriodo, 
+  @pAnoPeriodo,
+  @pIdProceso,
+  @pFolioExe,	
+  @pIdTarea,
   @tipo_info,
   @id_bloque,
   @id_formato,
@@ -114,53 +115,80 @@ BEGIN
   @b_separador OUT,
   @car_separador OUT,
   @num_campos OUT,
+  @pBError  OUT,
   @pError OUT,
   @pMsgError OUT
-
-  BEGIN TRY
+  END TRY
+ 
+  BEGIN CATCH 
+  SET  @pError    =  '(E) Verifica File;'
+  SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+  EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+  SET  @pBError  =  @k_verdadero
+  RETURN
+  END CATCH
 
   IF  @cve_correcto = @k_correcto
   BEGIN
---    SELECT 'CORRECTO ' 
     DELETE FROM FC_CARGA_COL_DATO  WHERE
-    ID_CLIENTE       =  @pIdCliente  AND
 	CVE_EMPRESA      =  @pCveEmpresa AND
     TIPO_INFORMACION =  @tipo_info   AND
 	ID_BLOQUE        =  @id_bloque   AND
 	ID_FORMATO       =  @id_formato  AND
-	PERIODO          =  @pPeriodo  
+	PERIODO          =  @pAnoPeriodo  
 
     DELETE FROM FC_CARGA_IND_DATO  WHERE
-    ID_CLIENTE       =  @pIdCliente  AND
 	CVE_EMPRESA      =  @pCveEmpresa AND
     TIPO_INFORMACION =  @tipo_info   AND
 	ID_FORMATO       =  @id_formato  AND
-	PERIODO          =  @pPeriodo  
+	PERIODO          =  @pAnoPeriodo  
 
 --	SELECT @pathcalc
 
     IF  @cve_tipo_archivo  IN (@k_ascii, @k_csv)
 	BEGIN 
+	  BEGIN TRY
       SET  @sql  =  
      'BULK INSERT #FILEP FROM ' + char(39) + @pathcalc + char(39) + ' WITH (DATAFILETYPE =' + char(39) + 'CHAR' + char(39) +
      ',' + 'CODEPAGE = ' + char(39) + 'ACP' + char(39) + ')'
       EXEC (@sql)
+      END TRY
+
+	  BEGIN CATCH
+      SET  @pError    =  '(E) BULK COPY;'
+	  SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	  SET  @pBError  =  @k_verdadero
+      RETURN
+	  END CATCH
     END
 	ELSE
 	BEGIN
       IF  @cve_tipo_archivo IN (@k_directorio)
       BEGIN
+        BEGIN TRY
         EXEC spCargaDir
-	    @pIdProceso,	
-        @pIdTarea,
-        @pCodigoUsuario,
-        @pIdCliente,
+	    @pIdCliente,
         @pCveEmpresa,
+        @pCodigoUsuario,
         @pCveAplicacion,
+        @pAnoPeriodo,
+        @pIdProceso,
+        @pFolioExe,
+        @pIdTarea,
 		@pathcalc,
 		@extension,
 		@pError OUT,
         @pMsgError OUT
+        END TRY
+
+	    BEGIN CATCH
+        SET  @pError    =  '(E) CARGA DIRECTORIO;'
+	    SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+        EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	    SET  @pBError  =  @k_verdadero
+        RETURN
+	    END CATCH
       END
 	END
 
@@ -225,7 +253,6 @@ BEGIN
     CADENA_ENCA,
     NUM_RENG_D_CAD
     FROM  FC_CARGA_RENG_ENCA  WHERE
-          ID_CLIENTE        =  @pIdCliente  AND
 		  CVE_EMPRESA       =  @pCveEmpresa AND
 		  TIPO_INFORMACION  =  @tipo_info   AND
 		  ID_BLOQUE         =  @id_bloque
@@ -249,13 +276,16 @@ BEGIN
 	  WHERE  RowID  =  @RowCount
 --	  SELECT 'spCalIniFinReng'  --*
 
-      EXEC spCalIniFinReng 
-      @pIdProceso,	
-      @pIdTarea,
-      @pCodigoUsuario,
+      BEGIN TRY 
+      EXEC spCalIniFinReng
       @pIdCliente,
       @pCveEmpresa,
-      @pPeriodo,
+      @pCodigoUsuario,
+      @pCveAplicacion,
+      @pAnoPeriodo,
+      @pIdProceso,
+      @pFolioExe,
+      @pIdTarea,
       @cve_tipo_bloque,
       @num_reng_ini,
       @num_reng_fin,
@@ -266,29 +296,50 @@ BEGIN
       @res_fin OUT, 
       @pError OUT,
       @pMsgError OUT
+	  END TRY
+	  BEGIN CATCH
+      SET  @pError    =  '(E) CARGA INI FIN REG;'
+	  SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	  SET  @pBError  =  @k_verdadero
+      RETURN
+	  END CATCH
 
-	  EXEC spCargaBloqCsvTxt 
-      @pIdProceso,	
-      @pIdTarea,
-      @pCodigoUsuario,
+	  BEGIN TRY
+	  EXEC spCargaBloqCsvTxt
       @pIdCliente,
       @pCveEmpresa,
+      @pCodigoUsuario,
+      @pCveAplicacion,
+      @pAnoPeriodo,
+      @pIdProceso,
+      @pFolioExe,
+      @pIdTarea,
       @tipo_info,
 	  @id_bloque,
 	  @id_formato,
       @num_campos,
       @res_ini,
       @res_fin, 
-      @pPeriodo,
+      @pAnoPeriodo,
 	  @cve_tipo_archivo, 
 	  @b_separador,
 	  @car_separador,
       @pError OUT,
       @pMsgError OUT
+      END TRY
+
+	  BEGIN CATCH
+      SET  @pError    =  '(E) CARGA BLOQUE;'
+	  SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	  SET  @pBError  =  @k_verdadero
+      RETURN
+	  END CATCH
 
 	  SET @RowCount = @RowCount + 1
     END
-    EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @NunRegistros
+    EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @NunRegistros
 
 ------------------------------------------------------------------------------
 -- Procesa Campos Individuales de Cada Formato
@@ -329,10 +380,10 @@ BEGIN
 	CADENA_ENCA,
 	NUM_RENG_D_CAD
 	FROM  FC_CARGA_IND  WHERE
-    ID_CLIENTE        =  @pIdCliente  AND
     CVE_EMPRESA       =  @pCveEmpresa AND
 	TIPO_INFORMACION  =  @tipo_info  
     SET @NunRegistros = @@ROWCOUNT
+
 -----------------------------------------------------------------------------------------------------
     SET @RowCount     = 1
 --	select * from @TCampoInd
@@ -350,17 +401,20 @@ BEGIN
 	  FROM @TCampoInd
 	  WHERE  RowID  =  @RowCount
 
-      EXEC spCalIniFinReng 
-      @pIdProceso,	
-      @pIdTarea,
-      @pCodigoUsuario,
+      BEGIN TRY
+      EXEC spCalIniFinReng
       @pIdCliente,
       @pCveEmpresa,
-      @pPeriodo,
+      @pCodigoUsuario,
+      @pCveAplicacion,
+      @pAnoPeriodo,
+      @pIdProceso,
+      @pFolioExe,
+      @pIdTarea,
       @cve_tipo_bloque,
       @num_renglon,
       @num_renglon,
-      ' ',
+      @cadena_fin,
       @cadena_enca,
       @num_reng_d_cad,
       @res_ini OUT,
@@ -368,6 +422,15 @@ BEGIN
       @pError OUT,
       @pMsgError OUT
 
+	  END TRY
+
+	  BEGIN CATCH
+      SET  @pError    =  '(E) CARGA INI FIN REG;'
+	  SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	  SET  @pBError  =  @k_verdadero
+      RETURN
+	  END CATCH
 	  --SELECT CONVERT(VARCHAR(10), @res_ini)
 	  --SELECT CONVERT(VARCHAR(10), @res_fin)
 
@@ -383,16 +446,20 @@ BEGIN
 	      SET  @row_file  =  @row_fileo 
 	    END
         SELECT @tipo_campo = CVE_TIPO_CAMPO  FROM  FC_CARGA_IND  WHERE 
-	    ID_CLIENTE        = @pIdCliente  AND
         CVE_EMPRESA       = @pCveEmpresa AND
         TIPO_INFORMACION  = @tipo_info  AND
         SECUENCIA   = @secuencia
+
+		BEGIN TRY
         EXEC spObtCampoSep
-             @pIdProceso,
-             @pIdTarea,
-             @pCodigoUsuario,
              @pIdCliente,
              @pCveEmpresa,
+             @pCodigoUsuario,
+             @pCveAplicacion,
+             @pAnoPeriodo,
+             @pIdProceso,
+             @pFolioExe,
+             @pIdTarea,
              @row_file,
              @tipo_campo, 
              @car_separador, 
@@ -401,13 +468,21 @@ BEGIN
              @row_fileo OUT,
              @pError OUT,
              @pMsgError OUT
-
+	    END TRY
+		 
+	    BEGIN CATCH
+        SET  @pError    =  '(E) OBT. CAMPO SEPARADO ;'
+	    SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+        EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	    SET  @pBError  =  @k_verdadero
+        RETURN
+	    END CATCH
         SET  @cont_columna  =  @cont_columna + 1
       END
 
-      INSERT  INTO FC_CARGA_IND_DATO
+      BEGIN TRY
+	  INSERT  INTO FC_CARGA_IND_DATO
       (
-      ID_CLIENTE,
       CVE_EMPRESA,
       TIPO_INFORMACION,
 	  ID_FORMATO,
@@ -417,14 +492,22 @@ BEGIN
       ) 
       VALUES
       (
-      @pIdCliente,
       @pCveEmpresa,
       @tipo_info,
 	  @id_formato,
-	  @pPeriodo,
+	  @pAnoPeriodo,
       @secuencia,
       @campo
       )
+	  END TRY
+	  BEGIN CATCH
+      SET  @pError    =  '(E) OBT. CAMPO SEPARADO;'
+      SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+      EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	  SET  @pBError  =  @k_verdadero
+      RETURN
+	  END CATCH
+
 	  SET @RowCount     = @RowCount + 1
     END 
   END
@@ -432,43 +515,14 @@ BEGIN
   BEGIN
     IF  @cve_correcto  =  @k_no_formato
 	BEGIN
-      SET  @pError    =  'No Existe el formato Especificado ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
+      SET  @pError    =  '(E) No Existe formato ' + ISNULL(@id_formato, 'NULO') + ' ;' 
 	END
 	ELSE
 	BEGIN
-      SET  @pError    =  'No extste archivo-directorio para el periodo-formato ' + ISNULL(ERROR_PROCEDURE(), ' ') + '-' 
+      SET  @pError    =  '(E) No extste path periodo-formato ' +  isnull(@pathcalc, 'NULO') + ' ;'
 	END
-    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), ' '))
---    SELECT @pMsgError 
-    EXECUTE spCreaTareaEvento 
-    @pIdProceso,
-    @pIdTarea,
-    @pCodigoUsuario,
-    @pIdCliente,
-    @pCveEmpresa,
-    @pCveAplicacion,
-    @k_error,
-    @pError,
-    @pMsgError
+	SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+	SET  @pBError  =  @k_verdadero  
   END
-  END TRY
-  BEGIN CATCH
-    SET  @pError    =  'Error de Ejecucion Proceso Carga File ' + ISNULL(ERROR_PROCEDURE(), 'NULO ') + '-' 
-    SET  @pMsgError =  LTRIM(@pError + '==> ' + isnull(ERROR_MESSAGE(), 'NULO '))
---   SELECT @pMsgError 
-    EXECUTE spCreaTareaEvento 
-    @pIdProceso,
-    @pIdTarea,
-    @pCodigoUsuario,
-    @pIdCliente,
-    @pCveEmpresa,
-    @pCveAplicacion,
-    @k_error,
-    @pError,
-    @pMsgError
-  END CATCH
 END
-
-
-
-

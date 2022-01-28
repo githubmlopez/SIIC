@@ -13,7 +13,7 @@ END
 GO
 CREATE FUNCTION [dbo].[fnObtParNumero] 
 (
-@pcve_parametro varchar(10)
+@pCveEmpresa varchar(4), @pcve_parametro varchar(10)
 )
 RETURNS NUMERIC(18,2)
 -- WITH EXECUTE AS CALLER
@@ -26,6 +26,6 @@ BEGIN
   THEN  VALOR_NUMERICO
   ELSE  0
   END
-  FROM  CI_PARAMETRO where CVE_PARAMETRO = @pcve_parametro)
+  FROM  CI_PARAMETRO where CVE_EMPRESA = @pCveEmpresa  AND CVE_PARAMETRO = @pcve_parametro)
 END
 

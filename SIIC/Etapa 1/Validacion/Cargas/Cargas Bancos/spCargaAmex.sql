@@ -1,6 +1,6 @@
 USE [ADMON01]
 GO
-/****** Carga de información Tarjetas Corporativas ******/
+/****** Carga de información Tarjetas Corporativas AMEXCO ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -13,34 +13,25 @@ BEGIN
 END
 GO
 
---EXEC spCargaAmex'CU','MARIO','201906',138,1,' ',' '
+--EXEC spCargaAmex 1,'CU','MARIO','SIIC','201906',214,1,1,0,' ',' '
 CREATE PROCEDURE [dbo].[spCargaAmex]
 (
---@pIdProceso       numeric(9),
---@pIdTarea         numeric(9),
---@pCodigoUsuario   varchar(20),
---@pIdCliente       int,
---@pCveEmpresa      varchar(4),
---@pCveAplicacion   varchar(10),
---@pIdFormato       int,
---@pIdBloque        int,
---@pAnoPeriodo      varchar(6),
---@pError           varchar(80) OUT,
---@pMsgError        varchar(400) OUT
---)
-@pCveEmpresa      varchar(4),
-@pCodigoUsuario   varchar(20),
-@pAnoPeriodo      varchar(6),
-@pIdProceso       numeric(9),
-@pIdTarea         numeric(9),
-@pError           varchar(80) OUT,
-@pMsgError        varchar(400) OUT
+@pIdCliente     int,
+@pCveEmpresa    varchar(4),
+@pCodigoUsuario varchar(20),
+@pCveAplicacion varchar(10),
+@pAnoPeriodo    varchar(8),
+@pIdProceso     numeric(9),
+@pFolioExe      int,
+@pIdTarea       numeric(9),
+@pBError        bit OUT,
+@pError         varchar(80) OUT, 
+@pMsgError      varchar(400) OUT
 )
 AS
 BEGIN
 
-  DECLARE @pIdCliente    int,
-          @pIdFormato    int,
+  DECLARE @pIdFormato    int,
 		  @pTipoInfo     int,
           @pIdBloque     int
 
@@ -65,6 +56,7 @@ BEGIN
 		  @pos_ini       int,
 		  @pos_fin       int,
 		  @cve_chequera  varchar(6),
+		  @cheq_param    varchar(6),
 		  @sdo_final     numeric(16,2),
 		  @b_default     bit
 
@@ -88,34 +80,34 @@ BEGIN
 
   IF  (SELECT SIT_PERIODO FROM CI_PERIODO_CONTA WHERE 
        CVE_EMPRESA = @pCveEmpresa   AND
-	   ANO_MES     = @pAnoPeriodo)  <>  @k_cerrado OR
-	  (SELECT COUNT(*) FROM CI_MOVTO_BANCARIO m, CI_CONCILIA_C_X_C c
-	   WHERE m.ANO_MES = @pAnoPeriodo  AND m.ID_MOVTO_BANCARIO = c.ID_MOVTO_BANCARIO) > 1 OR
-	  (SELECT COUNT(*) FROM CI_MOVTO_BANCARIO m, CI_CONCILIA_C_X_P c
-	   WHERE m.ANO_MES = @pAnoPeriodo  AND m.ID_MOVTO_BANCARIO = c.ID_MOVTO_BANCARIO) > 1 
+	   ANO_MES     = @pAnoPeriodo)  <>  @k_cerrado
   BEGIN
 
-    DECLARE @TvpInbursa TABLE
+    DECLARE @TvpAmexco TABLE
    (
     NUM_REGISTRO       int identity(1,1),
     CVE_CHEQUERA       varchar (6)    NOT NULL
    )
 
-    EXEC  spParamCarga
-    @pAnoPeriodo, @pCveEmpresa, @pIdProceso, @pIdCliente OUT, 
-	@pTipoInfo OUT, @pIdBloque OUT, @pIdFormato OUT, @cve_chequera OUT
+	SELECT @cheq_param  = SUBSTRING(PARAMETRO,1,6)
+    FROM   FC_PROCESO 
+	WHERE  CVE_EMPRESA =  @pCveEmpresa  AND ID_PROCESO = @pIdProceso
+
+ --   EXEC  spParamCarga
+ --   @pAnoPeriodo, @pCveEmpresa, @pIdProceso, 
+--    @pTipoInfo OUT, @pIdBloque OUT, @pIdFormato OUT, @cve_chequera OUT, @k_verdadero
 
 -----------------------------------------------------------------------------------------------------
 -- No meter instrucciones intermedias en este bloque porque altera el funcionamiento del @@ROWCOUNT 
 -----------------------------------------------------------------------------------------------------
 
-    INSERT INTO @TvpInbursa
+    INSERT INTO @TvpAmexco
    (
     CVE_CHEQUERA
    )
     SELECT  CVE_CHEQUERA
     FROM CI_CHEQUERA ch WHERE
-    CONVERT(INT,SUBSTRING(PARAM_INFORMACION,1,6))  = @pTipoInfo
+    CVE_CHEQUERA  =  @cheq_param
     SET @NunRegistros = @@ROWCOUNT
 -----------------------------------------------------------------------------------------------------
     SET @RowCount     = 1
@@ -123,23 +115,20 @@ BEGIN
     WHILE @RowCount <= @NunRegistros
     BEGIN
       BEGIN TRY
-	  SELECT @cve_chequera = CVE_CHEQUERA  FROM @TvpInbursa WHERE NUM_REGISTRO = @RowCount
-
-      DELETE FROM CI_MOVTO_BANCARIO WHERE ANO_MES = @pAnoPeriodo AND CVE_CHEQUERA = @cve_chequera
+	  SELECT @cve_chequera = CVE_CHEQUERA  FROM @TvpAmexco WHERE NUM_REGISTRO = @RowCount
 
 	  SELECT @pTipoInfo  = CONVERT(INT,SUBSTRING(PARAM_INFORMACION,1,6)),
 	         @pIdBloque  = CONVERT(INT,SUBSTRING(PARAM_INFORMACION,7,6)),
 			 @pIdFormato = CONVERT(INT,SUBSTRING(PARAM_INFORMACION,13,6))
-	  FROM CI_CHEQUERA 
+	  FROM   CI_CHEQUERA 
 	  WHERE  CVE_CHEQUERA =  @cve_chequera
 
-	  SET  @pos_ini  =  CONVERT(INT,(ISNULL(dbo.fnObtParNumero(@cve_chequera + @k_inicio),0)))
-	  SET  @pos_fin  =  CONVERT(INT,(ISNULL(dbo.fnObtParNumero(@cve_chequera + @k_fin),0)))
+	  SET  @pos_ini  =  CONVERT(INT,(ISNULL(dbo.fnObtParNumero(@pCveEmpresa, @cve_chequera + @k_inicio),0)))
+	  SET  @pos_fin  =  CONVERT(INT,(ISNULL(dbo.fnObtParNumero(@pCveEmpresa, @cve_chequera + @k_fin),0)))
 
 	  UPDATE CI_CHEQUERA_PERIODO  SET  SDO_FIN_MES = 0 WHERE ANO_MES  =  @pAnoPeriodo  AND  CVE_CHEQUERA = @cve_chequera
 
-	  SELECT @NunRegistros1 = MAX(NUM_REGISTRO) FROM CARGADOR.dbo.FC_CARGA_COL_DATO WHERE
-      ID_CLIENTE       = @pIdCliente  AND
+	  SELECT @NunRegistros1 = MAX(NUM_REGISTRO) FROM FC_CARGA_COL_DATO WHERE
       CVE_EMPRESA      = @pCveEmpresa AND
       TIPO_INFORMACION = @pTipoInfo   AND
       ID_BLOQUE        = @pIdBloque   AND
@@ -187,82 +176,104 @@ BEGIN
  
         SET  @cve_tipo_movto     =  @cve_operacion
 
-		IF NOT EXISTS (SELECT 1 FROM CI_TIPO_MOVIMIENTO WHERE CVE_TIPO_MOVTO = @cve_operacion)
-		BEGIN
-          SET  @pError    =  'N.E. Oper '  +  ISNULL(SUBSTRING(@descripcion,1,50),'NULO')
-          SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
-          SELECT @pMsgError
-     --   EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
-          SET @RowCount1  =  @NunRegistros1 
- 		END
-
 		SET @referencia = 0
 
- 		SET @folio = (select  NUM_FOLIO + 1 FROM  CI_FOLIO  WHERE CVE_FOLIO  =  @k_mov_banc)
-	    UPDATE CI_FOLIO SET NUM_FOLIO = @folio  WHERE CVE_FOLIO  =  @k_mov_banc
 
-        INSERT INTO CI_MOVTO_BANCARIO 
-       (
-        ANO_MES,
-        CVE_CHEQUERA,
-        ID_MOVTO_BANCARIO,
-        F_OPERACION,
-        CVE_CARGO_ABONO,
-        IMP_TRANSACCION,
-        CVE_TIPO_MOVTO,
-        DESCRIPCION,
-		REFERENCIA,
-        SIT_CONCILIA_BANCO,
-        SIT_MOVTO,
-		B_OPER_DEFAULT
-       )  VALUES
-	   (
-	    @pAnoPeriodo,
-        @cve_chequera,
-	    @folio,
-        @f_operacion,
-		@cve_cargo_abono,
-		ABS(@imp_transaccion),
-		@cve_operacion,
-		@descripcion,
-		@referencia,
-		@k_no_conc,
-        @k_activa,
-		@b_default
-	   )  
+	    IF EXISTS (SELECT 1 FROM CI_TIPO_MOVTO_BANCO WHERE CVE_EMPRESA = @pCveEmpresa AND CVE_TIPO_MOVTO = @cve_tipo_movto)
+	    BEGIN
 
+     	  SET @folio = (select  NUM_FOLIO + 1 FROM  CI_FOLIO  WHERE CVE_FOLIO  =  @k_mov_banc)
+	      UPDATE CI_FOLIO SET NUM_FOLIO = @folio  WHERE CVE_FOLIO  =  @k_mov_banc
+
+          INSERT INTO CI_MOVTO_BANCARIO 
+         (
+		  CVE_EMPRESA,
+          ANO_MES,
+          CVE_CHEQUERA,
+          ID_MOVTO_BANCARIO,
+          F_OPERACION,
+          CVE_CARGO_ABONO,
+          IMP_TRANSACCION,
+          CVE_TIPO_MOVTO,
+          DESCRIPCION,
+		  REFERENCIA,
+          SIT_CONCILIA_BANCO,
+          SIT_MOVTO,
+		  B_OPER_DEFAULT,
+		  REF_EMP,
+		  B_REFERENCIA
+         )  VALUES
+	     (
+	      @pCveEmpresa,
+		  @pAnoPeriodo,
+          @cve_chequera,
+	      @folio,
+          @f_operacion,
+		  @cve_cargo_abono,
+		  ABS(@imp_transaccion),
+		  @cve_operacion,
+		  @descripcion,
+		  @referencia,
+		  @k_no_conc,
+          @k_activa,
+		  @b_default,
+		  ' ',
+		  0
+	     )  
+        END
+        ELSE
+        BEGIN
+          SET  @pBError    =  @k_verdadero
+          SET  @pError    =  '(E) No Existe Operacion '  +  ISNULL(SUBSTRING(@descripcion,1,50),'NULO') 
+          SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+          EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+          SET @RowCount1  =  @NunRegistros1 
+ 		END
 		SELECT @RowCount1  =  @RowCount1  +  1 
       END
 
       END TRY 
 
 	  BEGIN CATCH
-        SET  @pError    =  'Error carga AMEXCO  '  +  ISNULL(@cve_chequera,'NULO') + ISNULL(ERROR_PROCEDURE(), ' ')
-        SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
-        SELECT @pMsgError
-     --   EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+        SET  @pBError    =  @k_verdadero
+        SET  @pError    =  '(E) Carga Amexco '  +  ISNULL(@cve_chequera,'NULO') + ' ' + ISNULL(ERROR_PROCEDURE(), ' ') 
+        SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+        EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
       END CATCH
 
-      SELECT @RowCount  =  @RowCount  +  1 
       DELETE FROM CI_MOVTO_BANCARIO WHERE ANO_MES = @pAnoPeriodo AND CVE_CHEQUERA = @cve_chequera AND IMP_TRANSACCION = 0
 
- 	  SET  @val_dato_c =  dbo.fnobtObtColInd (@pIdCliente, @pCveEmpresa,  @pTipoInfo, @pIdFormato, 1, @pAnoPeriodo, 1)   
+      IF  @pBError    =  @k_falso
+	  BEGIN
+        SET  @val_dato_c =  dbo.fnObtColInd (@pIdCliente, @pCveEmpresa,  @pTipoInfo, @pIdFormato, @pAnoPeriodo, 1)   
+        SET  @sdo_final = CONVERT(numeric(16,2),REPLACE((RTRIM(SUBSTRING(@val_dato_c,1,18))),' ',0)) 
 
-      SET  @sdo_final = CONVERT(numeric(16,2),REPLACE((RTRIM(SUBSTRING(@val_dato_c,1,18))),' ',0)) 
+		IF   @sdo_final  IS NULL 
+	    BEGIN
+          SET  @pBError    =  @k_verdadero
+          SET  @pError    =  '(E) No existe saldo final '  +  ISNULL(@cve_chequera,'NULO')  
+          SET  @pMsgError =  @pError +  ISNULL(SUBSTRING(ERROR_MESSAGE(),1,320),'*')
+          EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
+		  SET @RowCount  =  @NunRegistros 
+	    END
+        ELSE
+		BEGIN
+		  UPDATE  CI_CHEQUERA_PERIODO  SET SDO_FIN_MES = @sdo_final WHERE
+	      ANO_MES       =  @pAnoPeriodo  AND
+	      CVE_CHEQUERA  =  @cve_chequera
+		END
+	  END
+	  
+	  SELECT @RowCount  =  @RowCount  +  1 
 
-      UPDATE  CI_CHEQUERA_PERIODO  SET SDO_FIN_MES = @sdo_final WHERE
-	  ANO_MES       =  @pAnoPeriodo  AND
-	  CVE_CHEQUERA  =  @cve_chequera
-
-      EXEC spActRegGral  @pCveEmpresa, @pIdProceso, @pIdTarea, @NunRegistros
     END
   END
   ELSE
   BEGIN
-    SET  @pError    =  'El Periodo esta cerrado o conciliados ' + ISNULL(ERROR_PROCEDURE(), ' ') 
+    SET  @pBError    =  @k_verdadero
+    SET  @pError    =  '(E) Periodo esta cerrado  ' 
     SET  @pMsgError =  LTRIM(@pError + '==> ' + ISNULL(ERROR_MESSAGE(), ' '))
-    SELECT @pMsgError
-    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pIdTarea, @k_error, @pError, @pMsgError
+    EXECUTE spCreaTareaEvento @pCveEmpresa, @pIdProceso, @pFolioExe, @pIdTarea, @k_error, @pError, @pMsgError
   END
 
 END
