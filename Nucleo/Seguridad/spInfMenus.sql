@@ -11,7 +11,7 @@ BEGIN
   DROP  PROCEDURE spInfMenus
 END
 GO
--- exec spInfMenus 'efren.garcia@cerouno.com.mx', 'INFRA', null
+-- exec spInfMenus '6c1022ee-8e65-4b20-a0b1-15726a962e41', 'INFRA', null
 CREATE PROCEDURE spInfMenus @pCveUsuario varchar(100), @pCveAplicacion varchar(10), @pPerfil varchar(20)
 AS
 BEGIN
@@ -27,7 +27,6 @@ BEGIN
            CVE_MENU_P           VARCHAR(20),                 
            DESC_MENU            varchar(100),          
            URL_MENU             varchar(100), 
-		   NUM_NIVEL            int,
 		   B_HOJA               bit,          
            ICONO_CLS            varchar(100))
 
@@ -36,7 +35,6 @@ BEGIN
            @cve_menu_p          varchar(20),                 
            @desc_menu           varchar(100),          
            @url_menu            varchar(100), 
-		   @num_nivel           int,
 		   @b_hoja              bit,          
            @icono_cls           varchar(100)
 
@@ -52,14 +50,13 @@ BEGIN
     SET  @cve_perfil  =  @pPerfil
   END
 
-  INSERT INTO @TSegMenu (CVE_APLICACION, CVE_MENU, CVE_MENU_P, DESC_MENU, URL_MENU, NUM_NIVEL, B_HOJA, ICONO_CLS)
+  INSERT INTO @TSegMenu (CVE_APLICACION, CVE_MENU, CVE_MENU_P, DESC_MENU, URL_MENU, B_HOJA, ICONO_CLS)
   SELECT
   CVE_APLICACION,
   CVE_MENU,
   CVE_MENU_P,
   DESC_MENU,
   URL_MENU,
-  NUM_NIVEL,
   B_HOJA,
   ICONO_CLS
   FROM INFRA.dbo.INF_SEG_MENU WHERE CVE_APLICACION = @pCveAplicacion 
@@ -75,7 +72,6 @@ BEGIN
            @cve_menu_p      =   CVE_MENU_P,                 
            @desc_menu       =   DESC_MENU,          
            @url_menu        =   URL_MENU,
-		   @num_nivel       =   NUM_NIVEL, 
 		   @b_hoja          =   B_HOJA,           
            @icono_cls       =   ICONO_CLS
 		   FROM  @TSegMenu WHERE  RowID  =  @RowCount 
@@ -99,7 +95,6 @@ END
   CVE_MENU_P,
   DESC_MENU,
   URL_MENU,
-  NUM_NIVEL,
   B_HOJA,
   ICONO_CLS
   FROM   @TSegMenu
